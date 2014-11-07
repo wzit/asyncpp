@@ -74,15 +74,9 @@ public:
 	pqueue(const pqueue& v) = delete;
 	pqueue& operator=(const pqueue& v) = delete;
 
-	bool empty() const
-	{
-		return min_heap.empty();
-	}
+	bool empty() const { return min_heap.empty(); }
 
-	size_t size() const
-	{
-		return min_heap.size();
-	}
+	size_t size() const { return min_heap.size(); }
 
 	void reserve(int32_t n)
 	{
@@ -135,20 +129,14 @@ public:
 		//return data[data_index];
 	}
 
-	const T& front() const
-	{
-		return data[min_heap[0]];
-	}
+	const T& front() const { return data[min_heap[0]]; }
 
-	int32_t front_index() const
-	{
-		return min_heap[0];
-	}
+	int32_t front_index() const { return min_heap[0]; }
 
 	void change_priority(int32_t data_index)
 	{
 		int32_t heap_index = data_to_heap[data_index];
-		int32_t father = (heap_idx - 1) >> 1; // -1/2 = 0; -1>>1 = -1;
+		int32_t father = (heap_index - 1) >> 1; // -1/2 = 0; -1>>1 = -1;
 		if (father >= 0 && data[data_index] < data[min_heap[father]])
 		{
 			shift_up(heap_index);
@@ -186,6 +174,8 @@ public:
 	{
 		return data[data_index];
 	}
+
+	T& operator[](int32_t data_index) { return data[data_index]; }
 
 	bool check()
 	{

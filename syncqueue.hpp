@@ -4,11 +4,13 @@
 #include <mutex>
 #include <cstdint>
 
+#pragma warning(disable:4351) //for visual studio
+
 namespace asyncpp
 {
 
 //最多容纳N-1个数据，本对象会占用 N*sizeof(T) 的内存空间
-template<typename T, std::size_t N>
+template<typename T, std::size_t N = 128>
 class FixedSizeCircleQueue
 {
 private:
@@ -22,11 +24,11 @@ public:
 	FixedSizeCircleQueue(const FixedSizeCircleQueue&) = delete;
 	FixedSizeCircleQueue& operator=(const FixedSizeCircleQueue&) = delete;
 
-	uint32_t size(){ return front_pos >= after_back_pos ? front_pos - after_back_pos : N - (after_back_pos - front_pos); }
+	uint32_t size() const { return front_pos >= after_back_pos ? front_pos - after_back_pos : N - (after_back_pos - front_pos); }
 	uint32_t size_safe(){std::lock_guard<std::mutex> lock(mtx); return size();}
-	bool empty(){ return front_pos == after_back_pos; }
+	bool empty() const { return front_pos == after_back_pos; }
 	bool empty_safe(){ std::lock_guard<std::mutex> lock(mtx); return empty(); }
-	bool full(){return after_back_pos != 0 ? after_back_pos - 1 == front_pos : N - 1 == front_pos;}
+	bool full() const { return after_back_pos != 0 ? after_back_pos - 1 == front_pos : N - 1 == front_pos; }
 	bool full_safe(){ std::lock_guard<std::mutex> lock(mtx); return full(); }
 
 	bool push(T&& val)
@@ -52,6 +54,18 @@ public:
 			return true;
 		}
 		else return false;
+	}
+	uint32_t pop(T* val, uint32_t n)
+	{
+		uint32_t cnt = 0;
+		std::lock_guard<std::mutex> lock(mtx);
+		while (front_pos != after_back_pos && cnt < n)
+		{
+			uint32_t pos = front_pos;
+			front_pos = pos != 0 ? pos - 1 : N - 1;
+			val[cnt++] = std::move(queue_data[pos]);
+		} 
+		return cnt;
 	}
 	T&& pop()
 	{
