@@ -1,4 +1,4 @@
-#ifndef _THREADS_HPP_
+﻿#ifndef _THREADS_HPP_
 #define _THREADS_HPP_
 
 #include "asyncommon.hpp"
@@ -13,18 +13,26 @@
 
 namespace asyncpp
 {
-	
+
+enum class ThreadState : uint8_t
+{
+	INIT,
+	WORKING,
+	END,
+};
+
 class ThreadPool;
 /************** Thread Base ****************/
 class BaseThread
 {
-private:
+protected:
 	FixedSizeCircleQueue<ThreadMsg, 128> m_msg_queue;
 	pqueue<TimerMsg> m_timer;
 	enum {MSG_CACHE_SIZE = 16};
 	ThreadMsg m_msg_cache[MSG_CACHE_SIZE];
 	ThreadPool* m_master;
 	thread_id_t m_id;
+	ThreadState m_state;
 public:
 	BaseThread()
 		: m_msg_queue()
@@ -32,6 +40,7 @@ public:
 		, m_msg_cache()
 		, m_master(nullptr)
 		, m_id(0)
+		, m_state(ThreadState::INIT)
 	{
 	}
 	BaseThread(ThreadPool* threadpool)
@@ -40,12 +49,16 @@ public:
 		, m_msg_cache()
 		, m_master(threadpool)
 		, m_id(0)
+		, m_state(ThreadState::INIT)
 	{
 	}
 	virtual ~BaseThread(){}
 	BaseThread(const BaseThread&) = delete;
 	BaseThread& operator=(const BaseThread&) = delete;
 public:
+	void set_state(ThreadState state) { m_state = state; }
+	ThreadState get_state() { return m_state; }
+	
 	virtual void run();
 	virtual void process_msg(ThreadMsg& msg){}
 
@@ -219,17 +232,15 @@ enum ReservedThreadMsgType
 	NET_ACCEPT_CLIENT_REQ,  //msg.m_ctx.i64 = fd
 	NET_ACCEPT_CLIENT_RESP,
 	
-	NET_DNS_QUERY_REQ,      //msg.m_buf = host
-	NET_DNS_QUERY_RESP,
+	NET_QUERY_DNS_REQ,      //msg.m_buf = host
+	NET_QUERY_DNS_RESP,		//msg.m_buf = ip
 
 	NET_MSG_TYPE_NUMBER
 };
 
 /************** Net Recv & Send Thread ****************/
-class MultiWaitNetThread : public BaseThread
+class NetBaseThread : public BaseThread
 {
-private:
-	std::unordered_map<uint32_t, NetConnect> m_conns;
 protected:
 	SpeedSample<16> m_ss;
 	int32_t m_recv_len;
@@ -239,9 +250,8 @@ protected:
 	int32_t m_body_len;
 	NetMsgType m_net_msg_type;
 public:
-	MultiWaitNetThread()
-		: m_conns()
-		, m_recv_len(0)
+	NetBaseThread()
+		: m_recv_len(0)
 		, m_recv_buf_len(0)
 		, m_recv_buf(nullptr)
 		, m_header_len(0)
@@ -249,18 +259,45 @@ public:
 		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 	{
 	}
-	MultiWaitNetThread(int32_t init_buf_size)
-		: m_conns()
-		, m_recv_len(0)
-		, m_recv_buf_len(0)
-		, m_recv_buf(nullptr)
-		, m_header_len(0)
-		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+public:
+	void on_read_event(NetConnect* conn);
+	void on_write_event(NetConnect* conn);
+	void on_error_event(NetConnect* conn){ on_error(conn, errno); }
+protected:
+	virtual int32_t frame();
+	virtual void on_write(NetConnect* conn);
+	void on_read(NetConnect* conn);
+	virtual void on_accept(NetConnect* conn);
+	virtual void on_close(NetConnect* conn);
+	virtual void on_error(NetConnect* conn, int32_t errcode);
+public:
+	virtual void process_msg(NetConnect* conn);
+	virtual void close(NetConnect* conn){ conn->m_state = NetConnectState::NET_CONN_CLOSING; }
+	virtual void force_close(NetConnect* conn);
+	virtual void reset(NetConnect* conn);
+	void send(NetConnect* conn, char* msg, int32_t msg_len,
+		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		m_recv_buf_len = init_buf_size;
-		m_recv_buf = static_cast<char*>(malloc(init_buf_size));
-		assert(m_recv_buf != nullptr);
+		conn->send(msg, msg_len, buf_type);
+	}
+public:
+	void detach_recv_buffer()
+	{
+		m_recv_buf = nullptr;
+		m_recv_len = 0;
+	}
+public:
+	int32_t add_conn(){}
+};
+
+class MultiWaitNetThread : public NetBaseThread
+{
+private:
+	std::unordered_map<uint32_t, NetConnect> m_conns;
+public:
+	MultiWaitNetThread()
+		: m_conns()
+	{
 	}
 public:
 	void on_read_event(NetConnect* conn);
@@ -299,7 +336,6 @@ class AsyncFrame;
 class ThreadPool
 {
 private:
-	friend class BaseThread;
 	FixedSizeCircleQueue<ThreadMsg, 256> m_msg_queue;
 	std::vector<BaseThread*> m_threads;
 	AsyncFrame* m_master;
@@ -316,8 +352,11 @@ public:
 	ThreadPool(const ThreadPool& val) = delete;
 	ThreadPool& operator=(const ThreadPool& val) = delete;
 
+public:
 	void set_id(thread_pool_id_t id){ m_id = id; }
 	thread_pool_id_t get_id(){ return m_id; }
+	
+	decltype(m_msg_queue)& get_msg_queue() { return m_msg_queue; }
 
 	bool push_msg(ThreadMsg&& msg, bool force_receiver_thread = false)
 	{
@@ -342,6 +381,7 @@ public:
 			return m_msg_queue.push(std::move(msg));
 		}
 	}
+	uint32_t pop(ThreadMsg* msg, uint32_t n){return m_msg_queue.pop(msg, n);}
 	bool full() const { return m_msg_queue.full(); }
 	bool full(thread_id_t thread_id) const
 	{
@@ -360,6 +400,8 @@ public:
 	{
 		return m_threads[thread_id];
 	}
+
+	decltype(m_threads)& get_threads(){ return m_threads; }
 
 	thread_id_t add_thread(BaseThread* new_thread)
 	{

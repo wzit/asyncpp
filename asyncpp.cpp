@@ -1,4 +1,4 @@
-#include "asyncpp.hpp"
+﻿#include "asyncpp.hpp"
 #include <cassert>
 
 namespace asyncpp
@@ -25,18 +25,38 @@ AsyncFrame::~AsyncFrame()
 
 static void thread_main(BaseThread* t)
 {
+	t->set_state(ThreadState::WORKING);
 	t->run();
 }
 
 void AsyncFrame::start_thread(BaseThread* t)
 {
-	std::thread thr(thread_main, t);
-	thr.detach();
+	if(t->get_state() == ThreadState::INIT)
+	{
+		std::thread thr(thread_main, t);
+		thr.detach();
+	}
+}
+
+void AsyncFrame::start_thread(thread_pool_id_t t_pool_id, thread_id_t t_id)
+{
+	start_thread(get_thread(t_pool_id, t_id));
 }
 
 void AsyncFrame::start()
 {
-	///TODO: start all thread
+	//start all thread
+	for(auto t_pool : m_thread_pools)
+	{
+		for (auto t : t_pool->get_threads())
+		{
+			start_thread(t);
+		}
+	}
+	for(auto t : m_global_threads)
+	{
+		start_thread(t);
+	}
 
 	for (;;)
 	{
@@ -46,6 +66,7 @@ void AsyncFrame::start()
 			g_unix_timestamp = cur_time;
 		}
 		///TODO:: server manager
+		usleep(10 * 1000);
 	}
 }
 

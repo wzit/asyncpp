@@ -1,4 +1,4 @@
-#ifndef _SYNCQUEUE_HPP_
+ï»¿#ifndef _SYNCQUEUE_HPP_
 #define _SYNCQUEUE_HPP_
 
 #include <mutex>
@@ -9,7 +9,7 @@
 namespace asyncpp
 {
 
-//×î¶àÈİÄÉN-1¸öÊı¾İ£¬±¾¶ÔÏó»áÕ¼ÓÃ N*sizeof(T) µÄÄÚ´æ¿Õ¼ä
+//æœ€å¤šå®¹çº³N-1ä¸ªæ•°æ®ï¼Œæœ¬å¯¹è±¡ä¼šå ç”¨ N*sizeof(T) çš„å†…å­˜ç©ºé—´
 template<typename T, std::size_t N = 128>
 class FixedSizeCircleQueue
 {

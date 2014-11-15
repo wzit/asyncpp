@@ -1,4 +1,4 @@
-#ifndef _ASYNCPP_HPP_
+ï»¿#ifndef _ASYNCPP_HPP_
 #define _ASYNCPP_HPP_
 
 #include "threads.hpp"
@@ -26,12 +26,12 @@ public:
 	AsyncFrame(const AsyncFrame&) = delete;
 	AsyncFrame& operator=(const AsyncFrame&) = delete;
 
-	/*********************Ìí¼Ó¼àÌı¶Ë¿Ú*********************/
+	/*********************æ·»åŠ ç›‘å¬ç«¯å£*********************/
 	/**
-	Ìí¼ÓÒ»¸ö¼àÌıÏß³Ì×é£¬ÓÃÓÚ¸ß²¢·¢³¡¾°
-	Õâ»á´´½¨Ò»¸öÈ«¾Ö¼àÌıÏß³ÌListenThread£¬
-	²¢´´½¨Ò»¸öÓÃÓÚ´¦ÀíclientÏûÏ¢µÄÏß³Ì×é£¬³õÊ¼ÓĞclient_thread_num¸öClientThread
-	@return <error code, listener thread id, client thread pool id>
+	æ·»åŠ ä¸€ä¸ªç›‘å¬çº¿ç¨‹ç»„ï¼Œç”¨äºé«˜å¹¶å‘åœºæ™¯
+	è¿™ä¼šåˆ›å»ºä¸€ä¸ªå…¨å±€ç›‘å¬çº¿ç¨‹ListenThreadï¼Œ
+	å¹¶åˆ›å»ºä¸€ä¸ªç”¨äºå¤„ç†clientæ¶ˆæ¯çš„çº¿ç¨‹ç»„ï¼Œåˆå§‹æœ‰client_thread_numä¸ªClientThread
+	@return <success/fail, listener thread id, client thread pool id>
 	*/
 	template<typename ListenThread, typename ClientThread>
 	std::tuple<bool, thread_id_t, thread_pool_id_t> add_listener(
@@ -44,25 +44,25 @@ public:
 	}
 
 	/**
-	Ìí¼ÓÒ»¸ö¼àÌıÏß³Ì×é£¬ÓÃÓÚ¸ß²¢·¢³¡¾°
-	Õâ»á´´½¨Ò»¸öÈ«¾Ö¼àÌıÏß³ÌListenThread£¬
-	acceptÉÏÀ´µÄclien»á±»·¢¸øclient_thread_poll_idÏß³Ì×éÖĞ´¦Àí
-	@return <listener thread id, success/fail>
+	æ·»åŠ ä¸€ä¸ªç›‘å¬çº¿ç¨‹ç»„ï¼Œç”¨äºé«˜å¹¶å‘åœºæ™¯
+	è¿™ä¼šåˆ›å»ºä¸€ä¸ªå…¨å±€ç›‘å¬çº¿ç¨‹ListenThreadï¼Œ
+	acceptä¸Šæ¥çš„clienä¼šè¢«å‘ç»™client_thread_poll_idçº¿ç¨‹ç»„ä¸­å¤„ç†
+	@return <success/fail, listener thread id>
 	*/
 	template<typename ListenThread>
-	std::pair<thread_id_t, bool> add_listener(
+	std::pair<bool, thread_id_t> add_listener(
 		const char* ip, uint16_t port,
 		thread_pool_id_t client_thread_poll_id)
 	{
 		thread_id_t listen_id = add_thread<ListenThread>(-1);
 		bool ret = add_listener(ip, port, listen_id, client_thread_poll_id, -1);
-		return std::pair<thread_id_t, bool>(listen_id, ret);
+		return std::pair<bool, thread_id_t>(ret, listen_id);
 	}
 
 	/**
-	ÏòÈ«¾ÖÏß³Ìglobal_net_thread_idÌí¼ÓÒ»¸ö¼àÌı¶Ë¿Ú
-	¸Ã¼àÌı¶Ë¿ÚÉÏµÄÊÂ¼ş£¬ÒÔ¼°acceptÉÏÀ´µÄÁ¬½ÓÉÏµÄÊÂ¼ş£¬È«²¿ÓÉ¸ÃÏß³Ì´¦Àí
-	@return error code
+	å‘å…¨å±€çº¿ç¨‹global_net_thread_idæ·»åŠ ä¸€ä¸ªç›‘å¬ç«¯å£
+	è¯¥ç›‘å¬ç«¯å£ä¸Šçš„äº‹ä»¶ï¼Œä»¥åŠacceptä¸Šæ¥çš„è¿æ¥ä¸Šçš„äº‹ä»¶ï¼Œå…¨éƒ¨ç”±è¯¥çº¿ç¨‹å¤„ç†
+	@return success/fail
 	*/
 	bool add_listener(thread_id_t global_net_thread_id,
 		const char* ip, uint16_t port)
@@ -72,11 +72,11 @@ public:
 	}
 
 	/**
-	ÏòÈ«¾ÖÏß³Ìglobal_net_thread_idÌí¼ÓÒ»¸ö¼àÌı¶Ë¿Ú
-	Á¬½ÓÉÏÀ´µÄclient½«½»ÓÉclient_thread_pool_idÏß³Ì×éµÄclient_thread_idÏß³Ì´¦Àí
-	client_thread_pool_id=-1±íÊ¾½»ÓÉÈ«¾ÖÏß³Ìclient_thread_id´¦Àí
-	client_thread_id=-1±íÊ¾×Ô¶¯Ñ¡Ôñclient_thread_pool_idÖĞµÄÄ³¸öÏß³Ì´¦Àí
-	@return true±íÊ¾ÇëÇó·¢ËÍ³É¹¦
+	å‘å…¨å±€çº¿ç¨‹global_net_thread_idæ·»åŠ ä¸€ä¸ªç›‘å¬ç«¯å£
+	è¿æ¥ä¸Šæ¥çš„clientå°†äº¤ç”±client_thread_pool_idçº¿ç¨‹ç»„çš„client_thread_idçº¿ç¨‹å¤„ç†
+	client_thread_pool_id=-1è¡¨ç¤ºäº¤ç”±å…¨å±€çº¿ç¨‹client_thread_idå¤„ç†
+	client_thread_id=-1è¡¨ç¤ºè‡ªåŠ¨é€‰æ‹©client_thread_pool_idä¸­çš„æŸä¸ªçº¿ç¨‹å¤„ç†
+	@return trueè¡¨ç¤ºè¯·æ±‚å‘é€æˆåŠŸ
 	*/
 	bool add_listener(const char* ip, uint16_t port,
 		thread_id_t global_net_thread_id,
@@ -96,12 +96,12 @@ public:
 		return send_thread_msg(std::move(msg));
 	}
 
-	/*********************Ìí¼ÓÖ÷¶¯Á¬½Ó¶Ë¿Ú*********************/
+	/*********************æ·»åŠ ä¸»åŠ¨è¿æ¥ç«¯å£*********************/
 	/**
-	Ìí¼ÓÒ»¸öÈ«¾ÖÍøÂçÏß³ÌÓÃÓÚÁ¬½Ó·şÎñÆ÷
-	¸ÃÁ¬½ÓÓÉ¸ÃÏß³Ìµ¥¶À¹ÜÀí£¬ÓÃÓÚ¸ßÍÌÍÂÁ¿³¡¾°
+	æ·»åŠ ä¸€ä¸ªå…¨å±€ç½‘ç»œçº¿ç¨‹ç”¨äºè¿æ¥æœåŠ¡å™¨
+	è¯¥è¿æ¥ç”±è¯¥çº¿ç¨‹å•ç‹¬ç®¡ç†ï¼Œç”¨äºé«˜ååé‡åœºæ™¯
 	@return global_thread_id
-	±¾µ÷ÓÃ×ÜÊÇ³É¹¦£¬Èç¹ûÁ¬½ÓÊ§°Ü£¬Ïß³Ì½«´¦ÓÚidle×´Ì¬£¬¿ÉÔÙ´ÎÌí¼ÓÁ¬½Ó
+	æœ¬è°ƒç”¨æ€»æ˜¯æˆåŠŸï¼Œå¦‚æœè¿æ¥å¤±è´¥ï¼Œçº¿ç¨‹å°†å¤„äºidleçŠ¶æ€ï¼Œå¯å†æ¬¡æ·»åŠ è¿æ¥
 	*/
 	template<typename ConnectThread>
 	thread_id_t add_connector(const char* host, uint16_t port)
@@ -112,11 +112,11 @@ public:
 	}
 	
 	/*
-	Ïònet_thread_pool_idÏß³Ì×éµÄnet_thread_idÏß³ÌÌí¼ÓÒ»¸öÍøÂçÁ¬½Ó
-	net_thread_pool_id=-1±íÊ¾Ïòglobal_net_thread_idÌí¼ÓÒ»¸öÍøÂçÁ¬½Ó
-	net_thread_id=-1±íÊ¾×Ô¶¯Ñ¡Ôñ
-	@return true±íÊ¾ÇëÇó·¢ËÍ³É¹¦
-	        Ê§°ÜÔ­Òò£ºxxx_id²»ºÏ·¨£¬Ä¿±êÏß³ÌÏûÏ¢¶ÓÁĞÂú
+	å‘net_thread_pool_idçº¿ç¨‹ç»„çš„net_thread_idçº¿ç¨‹æ·»åŠ ä¸€ä¸ªç½‘ç»œè¿æ¥
+	net_thread_pool_id=-1è¡¨ç¤ºå‘global_net_thread_idæ·»åŠ ä¸€ä¸ªç½‘ç»œè¿æ¥
+	net_thread_id=-1è¡¨ç¤ºè‡ªåŠ¨é€‰æ‹©
+	@return trueè¡¨ç¤ºè¯·æ±‚å‘é€æˆåŠŸ
+	        å¤±è´¥åŸå› ï¼šxxx_idä¸åˆæ³•ï¼Œç›®æ ‡çº¿ç¨‹æ¶ˆæ¯é˜Ÿåˆ—æ»¡
 	*/
 	bool add_connector(const char* host, uint16_t port,
 		thread_pool_id_t net_thread_pool_id, thread_id_t net_thread_id)
@@ -134,40 +134,40 @@ public:
 		return send_thread_msg(std::move(msg));
 	}
 
-	/************************Ìí¼ÓÏß³Ì×é************************/
+	/************************æ·»åŠ çº¿ç¨‹ç»„************************/
 	/**
-	´´½¨Ò»¸öÏß³Ì×é£¬³õÊ¼ÓĞthread_num¸öThreadÏß³Ì
-	@return thread_pool_id
+	åˆ›å»ºä¸€ä¸ªçº¿ç¨‹ç»„ï¼Œåˆå§‹æœ‰thread_numä¸ªThreadçº¿ç¨‹
+	@return t_pool_id
 	*/
 	template<typename Thread>
 	thread_pool_id_t add_thread_pool(uint8_t thread_num)
 	{
 		thread_pool_id_t id = m_thread_pools.size();
-		ThreadPool* thread_pool = new ThreadPool(this, id);
+		ThreadPool* t_pool = new ThreadPool(this, id);
 		for (uint32_t i = 0; i < thread_num; ++i)
 		{
-			thread_pool->add_thread(new Thread());
+			t_pool->add_thread(new Thread());
 		}
 		return id;
 	}
 
 	/**
-	Ïòthread_pool_idÏß³Ì×éÖĞÌí¼ÓÒ»¸öThreadÏß³Ì
-	thread_pool_id=-1±íÊ¾Ìí¼Óµ½È«¾ÖÏß³Ì×éÖĞ
-	@return thread_id
+	å‘thread_pool_idçº¿ç¨‹ç»„ä¸­æ·»åŠ ä¸€ä¸ªThreadçº¿ç¨‹
+	t_pool_id=-1è¡¨ç¤ºæ·»åŠ åˆ°å…¨å±€çº¿ç¨‹ç»„ä¸­
+	@return t_id
 	*/
 	template<typename Thread>
-	thread_id_t add_thread(thread_pool_id_t thread_pool_id)
+	thread_id_t add_thread(thread_pool_id_t t_pool_id)
 	{
 		BaseThread* new_thread = new Thread();
-		return add_thread(thread_pool_id, new_thread);
+		return add_thread(t_pool_id, new_thread);
 	}
 
-	thread_id_t add_thread(thread_pool_id_t thread_pool_id, BaseThread* new_thread)
+	thread_id_t add_thread(thread_pool_id_t t_pool_id, BaseThread* new_thread)
 	{
-		if (thread_pool_id >= 0)
+		if (t_pool_id >= 0)
 		{
-			m_thread_pools[thread_pool_id]->add_thread(new_thread);
+			m_thread_pools[t_pool_id]->add_thread(new_thread);
 		}
 		else
 		{
@@ -177,7 +177,7 @@ public:
 		return new_thread->get_id();
 	}
 
-	/********************Ïß³ÌÍ¬²½********************/
+	/********************çº¿ç¨‹åŒæ­¥********************/
 	bool send_thread_msg(ThreadMsg&& msg)
 	{
 		if (msg.m_dst_thread_pool_id >= 0)
@@ -203,28 +203,29 @@ public:
 			sender->get_thread_pool()->get_id(), receiver_thread_pool));
 	}
 
-	bool is_msg_queue_full(thread_pool_id_t thread_pool_id, thread_id_t thread_id)
+	bool is_msg_queue_full(thread_pool_id_t t_pool_id, thread_id_t t_id)
 	{
-		return get_thread(thread_pool_id, thread_id)->full();
+		return get_thread(t_pool_id, t_id)->full();
 	}
-	bool is_msg_queue_full(thread_pool_id_t thread_pool_id)
+	bool is_msg_queue_full(thread_pool_id_t t_pool_id)
 	{
-		return get_thread_pool(thread_pool_id)->full();
+		return get_thread_pool(t_pool_id)->full();
 	}
 
 	/*****************************server manager*****************************/
-	ThreadPool* get_thread_pool(thread_pool_id_t thread_pool_id)
+	ThreadPool* get_thread_pool(thread_pool_id_t t_pool_id)
 	{
-		return thread_pool_id >= 0 ? m_thread_pools[thread_pool_id] : nullptr;
+		return t_pool_id >= 0 ? m_thread_pools[t_pool_id] : nullptr;
 	}
-	BaseThread* get_thread(thread_pool_id_t thread_pool_id, thread_id_t thread_id)
+	BaseThread* get_thread(thread_pool_id_t t_pool_id, thread_id_t t_id)
 	{
-		return thread_pool_id >= 0 ?
-			m_thread_pools[thread_pool_id]->operator[](thread_id) :
-			m_global_threads[thread_id];
+		return t_pool_id >= 0 ?
+			m_thread_pools[t_pool_id]->operator[](t_id) :
+			m_global_threads[t_id];
 	}
 
 	void start_thread(BaseThread* t);
+	void start_thread(thread_pool_id_t t_pool_id, thread_id_t t_id);
 	void start(); //block
 };
 

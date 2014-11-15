@@ -1,4 +1,4 @@
-#ifndef _SELECTOR_HPP_
+ï»¿#ifndef _SELECTOR_HPP_
 #define _SELECTOR_HPP_
 
 #include <vector>
@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cassert>
+
+#pragma warning(disable:4819) //for visual studio
 
 #ifdef __GNUC__
 
@@ -59,7 +61,7 @@ public:
 		assert(m_fd != INVALID_HANDLE_VALUE);
 		return epoll_ctl(m_fd, EPOLL_CTL_ADD, fd, &ev);
 	}
-	/*ÔİÊ±²»Ö§³Ö*/
+	/*æš‚æ—¶ä¸æ”¯æŒ*/
 	int32_t del(SOCKET_HANDLE fd)
 	{
 		struct epoll_event ev = {};
@@ -119,7 +121,7 @@ public:
 		assert(m_fd != INVALID_HANDLE_VALUE);
 		CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 	}
-	/*ÔİÊ±²»Ö§³Ö*/
+	/*æš‚æ—¶ä¸æ”¯æŒ*/
 	int32_t del(SOCKET_HANDLE fd)
 	{
 		return closesocket(fd);

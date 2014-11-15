@@ -1,4 +1,4 @@
-#ifndef _ASYNCOMMON_HPP_
+ï»¿#ifndef _ASYNCOMMON_HPP_
 #define _ASYNCOMMON_HPP_
 
 #include <cstdint>
@@ -7,6 +7,7 @@
 #include <utility>
 
 #pragma warning(disable:4351) //for visual studio
+#pragma warning(disable:4819) //for visual studio
 
 namespace asyncpp
 {
@@ -38,18 +39,18 @@ enum PACKAGE_SIZE_LIMIT : int32_t
 /************** Thread Message ****************/
 enum class MsgContextType : uint8_t
 {
-	I64, //Ïú»ÙÊ±ÎŞĞèÖ´ĞĞÈÎºÎ²Ù×÷
-	POD_STATIC, //Ïú»ÙÊ±ÎŞĞèÖ´ĞĞÈÎºÎ²Ù×÷
-	POD_MALLOC, //Ïú»ÙÊ±Ê¹ÓÃfree
-	POD_NEW, //Ïú»ÙÊ±Ê¹ÓÃdelete[]£¨²»»áµ÷ÓÃÎö¹¹º¯Êı£©
-	OBJECT, //Ïú»ÙÊ±Ê¹ÓÃdelete£¨»áµ÷ÓÃÎö¹¹º¯Êı£©
+	I64, //é”€æ¯æ—¶æ— éœ€æ‰§è¡Œä»»ä½•æ“ä½œ
+	POD_STATIC, //é”€æ¯æ—¶æ— éœ€æ‰§è¡Œä»»ä½•æ“ä½œ
+	POD_MALLOC, //é”€æ¯æ—¶ä½¿ç”¨free
+	POD_NEW, //é”€æ¯æ—¶ä½¿ç”¨delete[]ï¼ˆä¸ä¼šè°ƒç”¨ææ„å‡½æ•°ï¼‰
+	OBJECT, //é”€æ¯æ—¶ä½¿ç”¨deleteï¼ˆä¼šè°ƒç”¨ææ„å‡½æ•°ï¼‰
 };
 
 enum class MsgBufferType : uint8_t
 {
-	STATIC, //Ïú»ÙÊ±ÎŞĞèÖ´ĞĞÈÎºÎ²Ù×÷
-	MALLOC, //Ïú»ÙÊ±Ê¹ÓÃfree
-	NEW, //Ïú»ÙÊ±Ê¹ÓÃdelete[]
+	STATIC, //é”€æ¯æ—¶æ— éœ€æ‰§è¡Œä»»ä½•æ“ä½œ
+	MALLOC, //é”€æ¯æ—¶ä½¿ç”¨free
+	NEW, //é”€æ¯æ—¶ä½¿ç”¨delete[]
 };
 
 class MsgContext
@@ -194,7 +195,7 @@ struct TimerMsg
 };
 
 /************** Speed Sample ****************/
-template<size_t MAX_RANGE = 64> //MAX_RANGE=2^nÓĞÖúÓÚÌá¸ßĞÔÄÜ(¸ÄÉÆÄ£ÔËËãËÙ¶È)
+template<size_t MAX_RANGE = 64> //MAX_RANGE=2^næœ‰åŠ©äºæé«˜æ€§èƒ½(æ”¹å–„æ¨¡è¿ç®—é€Ÿåº¦)
 class SpeedSample
 {
 private:

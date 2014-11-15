@@ -1,4 +1,4 @@
-#include "threads.hpp"
+ï»¿#include "threads.hpp"
 #include <cassert>
 
 namespace asyncpp
@@ -17,7 +17,7 @@ void BaseThread::run()
 		}
 		if (m_master != nullptr)
 		{
-			pool_msg_cnt = m_master->m_msg_queue.pop(m_msg_cache, MSG_CACHE_SIZE);
+			pool_msg_cnt = m_master->pop(m_msg_cache, MSG_CACHE_SIZE);
 			for (uint32_t i = 0; i < pool_msg_cnt; ++i)
 			{
 				process_msg(m_msg_cache[i]);
@@ -38,8 +38,10 @@ void MultiWaitNetThread::on_read_event(NetConnect* conn)
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
+		on_read(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
+		on
 		break;
 	case NetConnectState::NET_CONN_CONNECTING:
 		break;
@@ -80,7 +82,7 @@ void MultiWaitNetThread::on_write(NetConnect* conn)
 
 static int32_t http_get_header_len(char* package, uint32_t package_len)
 {
-	char* p = package + 32; //°´ÕÕ¹æ·¶£¬httpÍ·Ò»°ãÓ¦´óÓÚ32¸ö×Ö½Ú
+	char* p = package + 32; //æŒ‰ç…§è§„èŒƒï¼Œhttpå¤´ä¸€èˆ¬åº”å¤§äºŽ32ä¸ªå­—èŠ‚
 	char* end = package + package_len - 4;
 	for (; p <= end; ++p)
 	{

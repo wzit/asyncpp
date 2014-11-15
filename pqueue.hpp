@@ -1,8 +1,9 @@
-#ifndef _PQUEUE_HPP_
+ï»¿#ifndef _PQUEUE_HPP_
 #define _PQUEUE_HPP_
 
 #include <vector>
 #include <cstdint>
+//#include <utility>
 
 namespace asyncpp
 {
@@ -12,9 +13,9 @@ class pqueue
 {
 private:
 	std::vector<T> data;
-	std::vector<int32_t> min_heap; //data¶ÔÓ¦µÄ×îĞ¡¶Ñ£¬Ê¹ÓÃÏÂ±êË÷ÒıdataÖĞµÄÔªËØ
-	std::vector<int32_t> data_to_heap; //dataÖĞµÄÔªËØÔÚheapÖĞµÄÏÂ±ê
-	std::vector<int32_t> free_list; //dataÖĞ¿ÉÓÃÎ»ÖÃÁĞ±í
+	std::vector<int32_t> min_heap; //dataå¯¹åº”çš„æœ€å°å †ï¼Œä½¿ç”¨ä¸‹æ ‡ç´¢å¼•dataä¸­çš„å…ƒç´ 
+	std::vector<int32_t> data_to_heap; //dataä¸­çš„å…ƒç´ åœ¨heapä¸­çš„ä¸‹æ ‡
+	std::vector<int32_t> free_list; //dataä¸­å¯ç”¨ä½ç½®åˆ—è¡¨
 
 	void shift_down(int32_t heap_index)
 	{
@@ -95,7 +96,7 @@ public:
 		return false;
 	}
 
-	int32_t push(const T& val)
+	int32_t push(T&& val)
 	{
 		int32_t data_index;
 		uint32_t size = free_list.size();
@@ -103,12 +104,12 @@ public:
 		{
 			data_index = free_list.back();
 			free_list.pop_back();
-			data[data_index] = val;
+			data[data_index] = std::move(val);
 		}
 		else
 		{
 			data_index = data.size();
-			data.push_back(val);
+			data.push_back(std::move(val));
 			data_to_heap.resize(data.size());
 		}
 		int32_t i = min_heap.size();
@@ -154,7 +155,7 @@ public:
 		free_list.push_back(data_index);
 		data_index = min_heap.back();
 		min_heap.pop_back();
-		if (heap_index != min_heap.size()) //É¾³ıµÄ²»ÊÇ¶ÑµÄ×îºóÒ»¸öÔªËØ
+		if (heap_index != min_heap.size()) //åˆ é™¤çš„ä¸æ˜¯å †çš„æœ€åä¸€ä¸ªå…ƒç´ 
 		{
 			int32_t father = (heap_index - 1) >> 1; // -1/2 = 0; -1>>1 = -1;
 			min_heap[heap_index] = data_index;
