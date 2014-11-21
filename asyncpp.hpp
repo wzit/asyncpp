@@ -1,4 +1,4 @@
-﻿#ifndef _ASYNCPP_HPP_
+#ifndef _ASYNCPP_HPP_
 #define _ASYNCPP_HPP_
 
 #include "threads.hpp"
@@ -111,7 +111,7 @@ public:
 		return id;
 	}
 	
-	/*
+	/**
 	向net_thread_pool_id线程组的net_thread_id线程添加一个网络连接
 	net_thread_pool_id=-1表示向global_net_thread_id添加一个网络连接
 	net_thread_id=-1表示自动选择

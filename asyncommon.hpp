@@ -1,4 +1,4 @@
-﻿#ifndef _ASYNCOMMON_HPP_
+#ifndef _ASYNCOMMON_HPP_
 #define _ASYNCOMMON_HPP_
 
 #include <cstdint>
@@ -39,7 +39,6 @@ enum PACKAGE_SIZE_LIMIT : int32_t
 /************** Thread Message ****************/
 enum class MsgContextType : uint8_t
 {
-	I64, //销毁时无需执行任何操作
 	POD_STATIC, //销毁时无需执行任何操作
 	POD_MALLOC, //销毁时使用free
 	POD_NEW, //销毁时使用delete[]（不会调用析构函数）
@@ -70,7 +69,6 @@ inline void free_context(MsgCtx& ctx, MsgContextType ctx_type)
 {
 	switch (ctx_type)
 	{
-	case MsgContextType::I64: break;
 	case MsgContextType::POD_STATIC: break;
 	case MsgContextType::POD_MALLOC: free(ctx.pod); ctx.pod = nullptr; break;
 	case MsgContextType::POD_NEW: delete[] static_cast<char*>(ctx.pod); ctx.pod = nullptr;  break;
@@ -98,7 +96,7 @@ struct ThreadMsg
 		, m_buf_len(0)
 		, m_buf(nullptr)
 		, m_buf_type(MsgBufferType::STATIC)
-		, m_ctx_type(MsgContextType::I64)
+		, m_ctx_type(MsgContextType::POD_STATIC)
 		, m_src_thread_id(-1)
 		, m_dst_thread_id(-1)
 		, m_src_thread_pool_id(-1)

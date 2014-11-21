@@ -80,7 +80,7 @@ public:
 
 	uint32_t add_timer(time_t wait_time, timer_func_t callback, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(callback, time(nullptr) + wait_time, ctx));
+		return m_timer.push(TimerMsg(callback, g_unix_timestamp + wait_time, ctx));
 	}
 	uint32_t add_timer_abs(time_t expire_time, timer_func_t callback, uint64_t ctx)
 	{
@@ -233,7 +233,7 @@ enum ReservedThreadMsgType
 	NET_ACCEPT_CLIENT_RESP,
 	
 	NET_QUERY_DNS_REQ,      //msg.m_buf = host
-	NET_QUERY_DNS_RESP,		//msg.m_buf = ip
+	NET_QUERY_DNS_RESP,		//msg.m_buf = ip                                                    
 
 	NET_MSG_TYPE_NUMBER
 };
@@ -299,10 +299,17 @@ public:
 		: m_conns()
 	{
 	}
-public:
-	void on_read_event(NetConnect* conn);
-	void on_write_event(NetConnect* conn);
-	void on_error_event(NetConnect* conn){ on_error(conn, errno); }
+protected:
+	virtual void on_read_event(NetConnect* conn) = 0;
+	virtual void on_write_event(NetConnect* conn) = 0;
+	virtual void on_error_event(NetConnect* conn)
+	{
+#ifdef _WIN32
+		on_error(conn, WSAGetLastError());
+#else
+		on_error(conn, errno);
+#endif
+	}
 protected:
 	virtual int32_t frame();
 	virtual void on_write(NetConnect* conn);
