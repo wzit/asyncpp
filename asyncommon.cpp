@@ -1,4 +1,4 @@
-#include "asyncommon.hpp"
+﻿#include "asyncommon.hpp"
 #include <cassert>
 #include <ctime>
 #ifdef __GNUC__

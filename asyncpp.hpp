@@ -1,4 +1,4 @@
-#ifndef _ASYNCPP_HPP_
+﻿#ifndef _ASYNCPP_HPP_
 #define _ASYNCPP_HPP_
 
 #include "threads.hpp"

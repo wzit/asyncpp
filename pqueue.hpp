@@ -155,8 +155,8 @@ public:
 		free_list.push_back(data_index);
 		data_index = min_heap.back();
 		min_heap.pop_back();
-		if (heap_index != min_heap.size()) //删除的不是堆的最后一个元素
-		{
+		if (heap_index != static_cast<int32_t>(min_heap.size()))
+		{ //删除的不是堆的最后一个元素
 			int32_t father = (heap_index - 1) >> 1; // -1/2 = 0; -1>>1 = -1;
 			min_heap[heap_index] = data_index;
 			data_to_heap[data_index] = heap_index;

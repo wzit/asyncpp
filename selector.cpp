@@ -79,7 +79,8 @@ namespace asyncpp
 int32_t SelSelector::poll(void* p_thread, uint32_t ms)
 {
 	int n = 0;
-	struct timeval tv = { ms / 1000, (ms % 1000) * 1000 };
+	struct timeval tv = { static_cast<decltype(tv.tv_sec)>(ms / 1000),
+		static_cast<decltype(tv.tv_usec)>((ms % 1000) * 1000) };
 	auto t = reinterpret_cast<MultiWaitNetThread<SelSelector>*>(p_thread);
 	SOCKET_HANDLE max_fd = 0;
 	fd_set read_fds;

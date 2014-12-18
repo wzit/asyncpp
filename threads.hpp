@@ -611,7 +611,7 @@ public:
 
 	thread_id_t add_thread(BaseThread* new_thread)
 	{
-		new_thread->set_id(m_threads.size());
+		new_thread->set_id(static_cast<thread_id_t>(m_threads.size()));
 		new_thread->set_thread_pool(this);
 		m_threads.push_back(new_thread);
 		return new_thread->get_id();

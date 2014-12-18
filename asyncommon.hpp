@@ -1,4 +1,4 @@
-#ifndef _ASYNCOMMON_HPP_
+﻿#ifndef _ASYNCOMMON_HPP_
 #define _ASYNCOMMON_HPP_
 
 #include <cstdint>
@@ -180,10 +180,10 @@ struct ThreadMsg
 		, m_buf(nullptr)
 		, m_buf_type(MsgBufferType::STATIC)
 		, m_ctx_type(MsgContextType::STATIC)
-		, m_src_thread_id(-1)
-		, m_dst_thread_id(-1)
-		, m_src_thread_pool_id(-1)
-		, m_dst_thread_pool_id(-1)
+		, m_src_thread_id(INVALID_THREAD_ID)
+		, m_dst_thread_id(INVALID_THREAD_POOL_ID)
+		, m_src_thread_pool_id(INVALID_THREAD_ID)
+		, m_dst_thread_pool_id(INVALID_THREAD_POOL_ID)
 	{
 	}
 
