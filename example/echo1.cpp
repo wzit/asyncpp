@@ -32,7 +32,7 @@ public:
 /*******************client*****************/
 void t1(uint32_t timer_id, uint64_t ctx)
 {
-	//´´½¨Ò»¸öÁ¬½Ó
+	//åˆ›å»ºä¸€ä¸ªè¿æ¥
 	g_asynf.add_connector("127.0.0.1", 22873, 0, g_client_net_thread,
 		g_asynf.get_thread(0, g_client_work_thread));
 	printf("hello %llu\n", ctx);
@@ -43,13 +43,13 @@ class ClientNetThread : public MultiWaitNetThread<SelSelector>
 protected:
 	virtual int32_t frame(NetConnect* conn) override
 	{
-		//±¾º¯Êı·µ»ØÒ»¸ö°üµÄ³¤¶È
+		//æœ¬å‡½æ•°è¿”å›ä¸€ä¸ªåŒ…çš„é•¿åº¦
 		return conn->m_recv_len;
 	}
 public:
 	virtual void process_net_msg(NetConnect* conn) override
 	{
-		//½«·şÎñÆ÷µÄ»Ø°üÍ¶µİ¸ø¹¤×÷Ïß³Ì
+		//å°†æœåŠ¡å™¨çš„å›åŒ…æŠ•é€’ç»™å·¥ä½œçº¿ç¨‹
 		char* buf = new char[conn->m_recv_len];
 		memcpy(buf, conn->m_recv_buf, conn->m_recv_len);
 		get_asynframe()->send_thread_msg(100,
@@ -62,12 +62,12 @@ public:
 		switch (msg.m_type)
 		{
 		case 200:
-			//´¦Àí¹¤×÷Ïß³ÌµÄ·¢°üÇëÇó
+			//å¤„ç†å·¥ä½œçº¿ç¨‹çš„å‘åŒ…è¯·æ±‚
 			send(static_cast<uint32_t>(msg.m_ctx.i64),
 				msg.m_buf, msg.m_buf_len, msg.m_buf_type);
 			break;
 		default:
-			//´¦ÀíĞÂ½¨Á¬½ÓµÈÇëÇó
+			//å¤„ç†æ–°å»ºè¿æ¥ç­‰è¯·æ±‚
 			MultiWaitNetThread<SelSelector>::process_msg(msg);
 		}
 		free_buffer(msg.m_buf, msg.m_buf_type);
@@ -82,13 +82,13 @@ public:
 		switch (msg.m_type)
 		{
 		case NET_CONNECT_HOST_RESP:
-			//ĞÂ½¨Á¬½ÓÏìÓ¦
-			//ÏòÍøÂçÏß³Ì·¢ËÍÏûÏ¢
+			//æ–°å»ºè¿æ¥å“åº”
+			//å‘ç½‘ç»œçº¿ç¨‹å‘é€æ¶ˆæ¯
 			get_asynframe()->send_thread_msg(200, "1234567890", 10, MsgBufferType::STATIC,
 				msg.m_ctx, MsgContextType::STATIC, 0, g_client_net_thread, this, true);
 			break;
 		case 100:
-			//ÊÕµ½ÍøÂçÏß³Ì·¢À´µÄÏûÏ¢£¬´òÓ¡µ½±ê×¼Êä³ö
+			//æ”¶åˆ°ç½‘ç»œçº¿ç¨‹å‘æ¥çš„æ¶ˆæ¯ï¼Œæ‰“å°åˆ°æ ‡å‡†è¾“å‡º
 			printf("\n-----recv-----\n%.*s\n", msg.m_buf_len, msg.m_buf);
 			add_timer(1, t1, 3);
 			break;
@@ -103,22 +103,22 @@ public:
 int main()
 {
 	/********************server********************/
-	//´´½¨·şÎñÏß³Ì
+	//åˆ›å»ºæœåŠ¡çº¿ç¨‹
 	thread_id_t sid = g_asynf.add_thread<ServerEchoThread>(0);
-	//Ïò·şÎñÏß³ÌÌí¼ÓÒ»¸ö¼àÌı¶Ë¿Ú
+	//å‘æœåŠ¡çº¿ç¨‹æ·»åŠ ä¸€ä¸ªç›‘å¬ç«¯å£
 	g_asynf.add_listener(sid, "0.0.0.0", 22873);
 
 	/*******************client*****************/
-	//´´½¨¿Í»§¶Ë¹¤×÷Ïß³Ì
+	//åˆ›å»ºå®¢æˆ·ç«¯å·¥ä½œçº¿ç¨‹
 	g_client_work_thread = g_asynf.add_thread<ClientWorkThread>(0);
-	//´´½¨¿Í»§¶ËÍøÂçÏß³Ì
+	//åˆ›å»ºå®¢æˆ·ç«¯ç½‘ç»œçº¿ç¨‹
 	g_client_net_thread = g_asynf.add_thread<ClientNetThread>(0);
-	//Ïò¿Í»§¶Ë¹¤×÷Ïß³Ì·¢ËÍÒ»ÌõÏûÏ¢
+	//å‘å®¢æˆ·ç«¯å·¥ä½œçº¿ç¨‹å‘é€ä¸€æ¡æ¶ˆæ¯
 	g_asynf.send_thread_msg(1234, nullptr, 0, MsgBufferType::STATIC,
 		{ 0 }, MsgContextType::STATIC, 0, g_client_work_thread,
 		g_asynf.get_thread(0, g_client_work_thread), true);
 
-	/*******************¿ªÆô·şÎñ******************/
-	//¿ªÊ¼ËùÓĞÏß³Ì£¬²¢×èÈû
+	/*******************å¼€å¯æœåŠ¡******************/
+	//å¼€å§‹æ‰€æœ‰çº¿ç¨‹ï¼Œå¹¶é˜»å¡
 	g_asynf.start();
 }
