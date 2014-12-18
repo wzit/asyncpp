@@ -150,6 +150,7 @@ public:
 	{
 		thread_pool_id_t id = m_thread_pools.size();
 		ThreadPool* t_pool = new ThreadPool(this, id);
+		m_thread_pools.push_back(t);
 		for (uint32_t i = 0; i < thread_num; ++i)
 		{
 			t_pool->add_thread(new Thread());
