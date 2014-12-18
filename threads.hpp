@@ -565,7 +565,7 @@ public:
 
 	bool push_msg(ThreadMsg&& msg, bool force_receiver_thread = false)
 	{
-		if (msg.m_dst_thread_id >= 0)
+		if (msg.m_dst_thread_id != INVALID_THREAD_ID)
 		{
 			if (m_threads[msg.m_dst_thread_id]->push_msg(std::move(msg)))
 			{
