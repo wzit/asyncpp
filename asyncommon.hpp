@@ -2,20 +2,92 @@
 #define _ASYNCOMMON_HPP_
 
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <cerrno>
 #include <ctime>
 #include <cstdlib>
 #include <utility>
 
+#ifdef _WIN32
 #pragma warning(disable:4351) //for visual studio
 #pragma warning(disable:4819) //for visual studio
+#endif
 
 namespace asyncpp
 {
 
 extern volatile time_t g_unix_timestamp;
 
-typedef int16_t thread_id_t;
-typedef int16_t thread_pool_id_t;
+#ifdef _WIN32
+#ifndef localtime_r
+#define localtime_r(unix_time, tms) localtime_s(tms, unix_time)
+#endif
+#ifndef snprintf
+#define snprintf(buffer, buffer_size, fmt, ...) _snprintf(buffer, buffer_size, fmt, ##__VA_ARGS__)
+#endif
+#endif
+
+#ifndef __FUNCSIG__
+#ifdef  __PRETTY_FUNCTION__
+#define __FUNCSIG__ __PRETTY_FUNCTION__
+#elif defined __FUNCTION__
+#define __FUNCSIG__ __FUNCTION__
+#else
+#define __FUNCSIG__ __func__
+#endif
+#endif
+
+const int LOGGER_LINE_SIZE = 4096;
+enum e_logger_level_t
+{
+	LOGGER_ALL = 0,
+	LOGGER_TRACE = 2,
+	LOGGER_DEBUG = 3,
+	LOGGER_INFO = 4,
+	LOGGER_WARN = 5,
+	LOGGER_ERROR = 6,
+	LOGGER_FATAL = 7,
+	LOGGER_NULL = 8,
+};
+
+class Logger
+{
+public:
+	int m_fd;
+	int32_t m_level;
+
+public:
+	int32_t logger_impl(const char* buf, uint32_t l);
+};
+
+extern Logger* logger;
+
+extern char logger_time_string_buffer[24];
+void logger_update_time_string();
+
+#define _logger_wrapper(logger, logger_level, file, line, func, fmt, ...) \
+if (LOGGER_##logger_level >= logger->m_level)\
+{\
+	char _lg_buf[LOGGER_LINE_SIZE]; \
+	int32_t _lg_l; \
+	logger_update_time_string(); \
+	_lg_l = snprintf(_lg_buf, LOGGER_LINE_SIZE, "[" #logger_level "] %s [%s:%u: %s] " fmt "\n", logger_time_string_buffer, file, line, func, ##__VA_ARGS__); \
+	if(_lg_l>0)logger_impl(logger,_lg_buf,_lg_l<LOGGER_LINE_SIZE?_lg_l:LOGGER_LINE_SIZE-1); \
+}\
+
+#define logger_trace(logger, fmt, ...) _logger_wrapper(logger, TRACE, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_debug(logger, fmt, ...) _logger_wrapper(logger, DEBUG, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_info(logger, fmt, ...) _logger_wrapper(logger, INFO, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_warn(logger, fmt, ...) _logger_wrapper(logger, WARN, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_error(logger, fmt, ...) _logger_wrapper(logger, ERROR, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_fatal(logger, fmt, ...) _logger_wrapper(logger, FATAL, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+
+typedef uint16_t thread_id_t;
+typedef uint16_t thread_pool_id_t;
+
+const thread_id_t INVALID_THREAD_ID = static_cast<thread_id_t>(-1);
+const thread_pool_id_t INVALID_THREAD_POOL_ID = static_cast<thread_pool_id_t>(-1);
 
 enum ERROR_CODE : int32_t
 {
@@ -39,7 +111,7 @@ enum PACKAGE_SIZE_LIMIT : int32_t
 /************** Thread Message ****************/
 enum class MsgContextType : uint8_t
 {
-	POD_STATIC, //销毁时无需执行任何操作
+	STATIC, //销毁时无需执行任何操作
 	POD_MALLOC, //销毁时使用free
 	POD_NEW, //销毁时使用delete[]（不会调用析构函数）
 	OBJECT, //销毁时使用delete（会调用析构函数）
@@ -69,10 +141,21 @@ inline void free_context(MsgCtx& ctx, MsgContextType ctx_type)
 {
 	switch (ctx_type)
 	{
-	case MsgContextType::POD_STATIC: break;
+	case MsgContextType::STATIC: break;
 	case MsgContextType::POD_MALLOC: free(ctx.pod); ctx.pod = nullptr; break;
 	case MsgContextType::POD_NEW: delete[] static_cast<char*>(ctx.pod); ctx.pod = nullptr;  break;
 	case MsgContextType::OBJECT: delete ctx.obj; ctx.obj = nullptr; break;
+	default: break;
+	}
+}
+
+inline void free_buffer(char*& buf, MsgBufferType buf_type)
+{
+	switch (buf_type)
+	{
+	case MsgBufferType::STATIC: break;
+	case MsgBufferType::MALLOC: free(buf); buf = nullptr;  break;
+	case MsgBufferType::NEW: delete[] buf; buf = nullptr; break;
 	default: break;
 	}
 }
@@ -91,12 +174,12 @@ struct ThreadMsg
 	thread_pool_id_t m_dst_thread_pool_id;
 
 	ThreadMsg()
-		: m_ctx()
+		: m_ctx({0})
 		, m_type(0)
 		, m_buf_len(0)
 		, m_buf(nullptr)
 		, m_buf_type(MsgBufferType::STATIC)
-		, m_ctx_type(MsgContextType::POD_STATIC)
+		, m_ctx_type(MsgContextType::STATIC)
 		, m_src_thread_id(-1)
 		, m_dst_thread_id(-1)
 		, m_src_thread_pool_id(-1)
@@ -104,11 +187,11 @@ struct ThreadMsg
 	{
 	}
 
-	ThreadMsg(MsgCtx* ctx, int32_t type, uint32_t buf_len, char* buf,
+	ThreadMsg(const MsgCtx& ctx, int32_t type, uint32_t buf_len, char* buf,
 		MsgBufferType buf_type, MsgContextType ctx_type,
 		thread_id_t src_thread_id, thread_id_t dst_thread_id,
 		thread_pool_id_t src_thread_pool_id, thread_pool_id_t dst_thread_pool_id)
-		: m_ctx(*ctx)
+		: m_ctx(ctx)
 		, m_type(type)
 		, m_buf_len(buf_len)
 		, m_buf(buf)
@@ -124,17 +207,6 @@ struct ThreadMsg
 	ThreadMsg(const ThreadMsg& val) = delete;
 	ThreadMsg& operator=(const ThreadMsg& val) = delete;
 
-	void free_buffer()
-	{
-		switch (m_buf_type)
-		{
-		case MsgBufferType::STATIC: break;
-		case MsgBufferType::MALLOC: free(m_buf); m_buf = nullptr;  break;
-		case MsgBufferType::NEW: delete[] m_buf; m_buf = nullptr; break;
-		default: break;
-		}
-	}
-
 	ThreadMsg(ThreadMsg&& val)
 	{
 		*this = std::move(val);
@@ -143,7 +215,7 @@ struct ThreadMsg
 	{
 		if (&val != this)
 		{
-			free_buffer();
+			free_buffer(m_buf, m_buf_type);
 			free_context(m_ctx, m_ctx_type);
 			m_ctx.i64 = val.m_ctx.i64;
 			m_type = val.m_type;
@@ -165,7 +237,7 @@ struct ThreadMsg
 
 	~ThreadMsg()
 	{
-		free_buffer();
+		free_buffer(m_buf, m_buf_type);
 		free_context(m_ctx, m_ctx_type);
 	}
 };

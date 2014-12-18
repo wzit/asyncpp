@@ -4,7 +4,9 @@
 #include <mutex>
 #include <cstdint>
 
+#ifdef _WIN32
 #pragma warning(disable:4351) //for visual studio
+#endif
 
 namespace asyncpp
 {

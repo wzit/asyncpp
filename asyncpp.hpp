@@ -10,23 +10,17 @@ class AsyncFrame
 {
 private:
 	std::vector<ThreadPool*> m_thread_pools;
-	std::vector<BaseThread*> m_global_threads;
 #ifdef _WIN32
 public:
 	static HANDLE m_iocp;
 #endif
 public:
-#ifdef _WIN32
 	AsyncFrame();
 	~AsyncFrame();
-#else
-	AsyncFrame() = default;
-	~AsyncFrame(){for(auto t:m_thread_pools)delete t;};
-#endif
 	AsyncFrame(const AsyncFrame&) = delete;
 	AsyncFrame& operator=(const AsyncFrame&) = delete;
 
-	/*********************添加监听端口*********************/
+	/*********************添加监听*********************/
 	/**
 	添加一个监听线程组，用于高并发场景
 	这会创建一个全局监听线程ListenThread，
@@ -37,7 +31,7 @@ public:
 	std::tuple<bool, thread_id_t, thread_pool_id_t> add_listener(
 		const char* ip, uint16_t port, uint8_t client_thread_num)
 	{
-		thread_id_t listen_id = add_thread<ListenThread>(-1);
+		thread_id_t listen_id = add_thread<ListenThread>(0);
 		thread_pool_id_t client_pool_id = add_thread_pool<ClientThread>(client_thread_num);
 		const auto& ret = add_listener<ListenThread>(ip, port, client_pool_id);
 		return std::tuple<bool, thread_id_t, thread_pool_id_t>(ret.second, ret.first, listen_id);
@@ -54,7 +48,7 @@ public:
 		const char* ip, uint16_t port,
 		thread_pool_id_t client_thread_poll_id)
 	{
-		thread_id_t listen_id = add_thread<ListenThread>(-1);
+		thread_id_t listen_id = add_thread<ListenThread>(0);
 		bool ret = add_listener(ip, port, listen_id, client_thread_poll_id, -1);
 		return std::pair<bool, thread_id_t>(ret, listen_id);
 	}
@@ -65,26 +59,32 @@ public:
 	@return success/fail
 	*/
 	bool add_listener(thread_id_t global_net_thread_id,
-		const char* ip, uint16_t port)
+		const char* ip, uint16_t port, BaseThread* sender = nullptr)
 	{
 		return add_listener(ip, port,
-			global_net_thread_id, -1, global_net_thread_id);
+			global_net_thread_id, 0, global_net_thread_id, sender);
 	}
 
 	/**
 	向全局线程global_net_thread_id添加一个监听端口
 	连接上来的client将交由client_thread_pool_id线程组的client_thread_id线程处理
-	client_thread_pool_id=-1表示交由全局线程client_thread_id处理
 	client_thread_id=-1表示自动选择client_thread_pool_id中的某个线程处理
 	@return true表示请求发送成功
 	*/
 	bool add_listener(const char* ip, uint16_t port,
 		thread_id_t global_net_thread_id,
-		thread_pool_id_t client_thread_pool_id, thread_id_t client_thread_id)
+		thread_pool_id_t client_thread_pool_id, thread_id_t client_thread_id,
+		BaseThread* sender = nullptr)
 	{
 		ThreadMsg msg;
 		msg.m_type = NET_LISTEN_ADDR_REQ;
+		if (sender != nullptr)
+		{
+			msg.m_src_thread_id = sender->get_id();
+			msg.m_src_thread_pool_id = sender->get_thread_pool_id();
+		}
 		msg.m_dst_thread_id = global_net_thread_id;
+		msg.m_dst_thread_pool_id = 0;
 		msg.m_buf_len = strlen(ip);
 		msg.m_buf = new char[msg.m_buf_len + 1];
 		memcpy(msg.m_buf, ip, msg.m_buf_len + 1);
@@ -96,7 +96,7 @@ public:
 		return send_thread_msg(std::move(msg));
 	}
 
-	/*********************添加主动连接端口*********************/
+	/*********************添加连接*********************/
 	/**
 	添加一个全局网络线程用于连接服务器
 	该连接由该线程单独管理，用于高吞吐量场景
@@ -106,8 +106,8 @@ public:
 	template<typename ConnectThread>
 	thread_id_t add_connector(const char* host, uint16_t port)
 	{
-		thread_id_t id = add_thread<ConnectThread>(-1);
-		add_connector(host, port, -1, id);
+		thread_id_t id = add_thread<ConnectThread>(0);
+		add_connector(host, port, 0, id);
 		return id;
 	}
 	
@@ -119,10 +119,16 @@ public:
 	        失败原因：xxx_id不合法，目标线程消息队列满
 	*/
 	bool add_connector(const char* host, uint16_t port,
-		thread_pool_id_t net_thread_pool_id, thread_id_t net_thread_id)
+		thread_pool_id_t net_thread_pool_id, thread_id_t net_thread_id,
+		BaseThread* sender = nullptr)
 	{
 		ThreadMsg msg;
 		msg.m_type = NET_CONNECT_HOST_REQ;
+		if (sender != nullptr)
+		{
+			msg.m_src_thread_id = sender->get_id();
+			msg.m_src_thread_pool_id = sender->get_thread_pool_id();
+		}
 		msg.m_dst_thread_id = net_thread_id;
 		msg.m_dst_thread_pool_id = net_thread_pool_id;
 		msg.m_buf_len = strlen(host);
@@ -153,7 +159,6 @@ public:
 
 	/**
 	向thread_pool_id线程组中添加一个Thread线程
-	t_pool_id=-1表示添加到全局线程组中
 	@return t_id
 	*/
 	template<typename Thread>
@@ -165,42 +170,78 @@ public:
 
 	thread_id_t add_thread(thread_pool_id_t t_pool_id, BaseThread* new_thread)
 	{
-		if (t_pool_id >= 0)
-		{
-			m_thread_pools[t_pool_id]->add_thread(new_thread);
-		}
-		else
-		{
-			new_thread->set_id(m_global_threads.size());
-			m_global_threads.push_back(new_thread);
-		}
-		return new_thread->get_id();
+		return m_thread_pools[t_pool_id]->add_thread(new_thread);
 	}
 
 	/********************线程同步********************/
-	bool send_thread_msg(ThreadMsg&& msg)
+	bool send_thread_msg(ThreadMsg&& msg, bool force_receiver_thread = false)
 	{
-		if (msg.m_dst_thread_pool_id >= 0)
-		{
-			return m_thread_pools[msg.m_dst_thread_pool_id]->push_msg(std::move(msg));
-		}
-		else
-		{
-			if (msg.m_dst_thread_id >= 0)
-			{
-				return m_global_threads[msg.m_dst_thread_id]->push_msg(std::move(msg));
-			}
-			else return false;
-		}
+		return m_thread_pools[msg.m_dst_thread_pool_id]->push_msg(
+			std::move(msg),
+			msg.m_dst_thread_pool_id == 0 ? true : force_receiver_thread);
 	}
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
-		MsgBufferType buf_type, MsgCtx* ctx, MsgContextType ctx_type,
+		MsgBufferType buf_type, const MsgCtx& ctx, MsgContextType ctx_type,
 		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
 		const BaseThread* sender, bool force_receiver_thread = false)
 	{
-		send_thread_msg(ThreadMsg(ctx, msg_type, buf_len, buf, buf_type,
-			ctx_type, sender->get_id(), receiver_thread,
-			sender->get_thread_pool()->get_id(), receiver_thread_pool));
+		if (sender != nullptr)
+		{
+			return send_thread_msg(ThreadMsg(ctx, msg_type,
+				buf_len, buf, buf_type,
+				ctx_type, sender->get_id(), receiver_thread,
+				sender->get_thread_pool_id(), receiver_thread_pool),
+				force_receiver_thread);
+		}
+		else
+		{
+			return send_thread_msg(ThreadMsg(ctx, msg_type,
+				buf_len, buf, buf_type,
+				ctx_type, INVALID_THREAD_ID, receiver_thread,
+				INVALID_THREAD_POOL_ID, receiver_thread_pool),
+				force_receiver_thread);
+		}
+	}
+	bool send_thread_msg(int32_t msg_type,
+		char* buf, uint32_t buf_len, MsgBufferType buf_type,
+		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
+		const BaseThread* sender, bool force_receiver_thread = false)
+	{
+		if (sender != nullptr)
+		{
+			return send_thread_msg(ThreadMsg({0}, msg_type,
+				buf_len, buf, buf_type,
+				MsgContextType::STATIC, sender->get_id(), receiver_thread,
+				sender->get_thread_pool_id(), receiver_thread_pool),
+				force_receiver_thread);
+		}
+		else
+		{
+			return send_thread_msg(ThreadMsg({0}, msg_type,
+				buf_len, buf, buf_type, MsgContextType::STATIC,
+				INVALID_THREAD_ID, receiver_thread,
+				INVALID_THREAD_POOL_ID, receiver_thread_pool),
+				force_receiver_thread);
+		}
+	}
+	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
+		MsgBufferType buf_type, const MsgCtx& ctx, MsgContextType ctx_type,
+		const ThreadMsg& req, const BaseThread* sender)
+	{
+		if (req.m_src_thread_pool_id != INVALID_THREAD_POOL_ID
+			&& req.m_src_thread_id != INVALID_THREAD_ID)
+		{
+			return send_thread_msg(msg_type,
+				buf, buf_len, buf_type, ctx, ctx_type,
+				req.m_src_thread_pool_id, req.m_src_thread_id, sender, true);
+		}
+		else return false;
+	}
+	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
+		MsgBufferType buf_type, const ThreadMsg& req, const BaseThread* sender)
+	{
+		return send_resp_msg(msg_type, buf, buf_len, buf_type,
+					{0}, MsgContextType::STATIC, req, sender);
 	}
 
 	bool is_msg_queue_full(thread_pool_id_t t_pool_id, thread_id_t t_id)
@@ -215,13 +256,11 @@ public:
 	/*****************************server manager*****************************/
 	ThreadPool* get_thread_pool(thread_pool_id_t t_pool_id)
 	{
-		return t_pool_id >= 0 ? m_thread_pools[t_pool_id] : nullptr;
+		return m_thread_pools[t_pool_id];
 	}
 	BaseThread* get_thread(thread_pool_id_t t_pool_id, thread_id_t t_id)
 	{
-		return t_pool_id >= 0 ?
-			m_thread_pools[t_pool_id]->operator[](t_id) :
-			m_global_threads[t_id];
+		return m_thread_pools[t_pool_id]->operator[](t_id);
 	}
 
 	void start_thread(BaseThread* t);

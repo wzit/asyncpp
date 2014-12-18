@@ -1,53 +1,313 @@
 ﻿#include "threads.hpp"
+#include "asyncpp.hpp"
 #include <cassert>
+#include <errno.h>
 
 namespace asyncpp
 {
+
+uint32_t BaseThread::check_timer_and_thread_msg()
+{
+	uint32_t self_msg_cnt = 0;
+	uint32_t pool_msg_cnt = 0;
+	self_msg_cnt = m_msg_queue.pop(m_msg_cache, MSG_CACHE_SIZE);
+	for (uint32_t i = 0; i < self_msg_cnt; ++i)
+	{
+		process_msg(m_msg_cache[i]);
+	}
+	if (get_thread_pool_id() != 0)
+	{
+		pool_msg_cnt = m_master->pop(m_msg_cache, MSG_CACHE_SIZE);
+		for (uint32_t i = 0; i < pool_msg_cnt; ++i)
+		{
+			process_msg(m_msg_cache[i]);
+		}
+	}
+
+	uint32_t timer_cnt = timer_check();
+
+	return self_msg_cnt + pool_msg_cnt + timer_cnt;
+}
 
 void BaseThread::run()
 {
 	for (;;)
 	{
-		uint32_t self_msg_cnt = 0;
-		uint32_t pool_msg_cnt = 0;
-		self_msg_cnt = m_msg_queue.pop(m_msg_cache, MSG_CACHE_SIZE);
-		for (uint32_t i = 0; i < self_msg_cnt; ++i)
-		{
-			process_msg(m_msg_cache[i]);
-		}
-		if (m_master != nullptr)
-		{
-			pool_msg_cnt = m_master->pop(m_msg_cache, MSG_CACHE_SIZE);
-			for (uint32_t i = 0; i < pool_msg_cnt; ++i)
-			{
-				process_msg(m_msg_cache[i]);
-			}
-		}
-
-		uint32_t timer_cnt = timer_check();
-
-		if (self_msg_cnt == 0 && pool_msg_cnt == 0 && timer_cnt == 0)
+		uint32_t msg_cnt = check_timer_and_thread_msg();
+		if (msg_cnt == 0)
 		{
 			usleep(1 * 1000);
 		}
 	}
 }
 
-void MultiWaitNetThread::on_read_event(NetConnect* conn)
+thread_id_t BaseThread::get_thread_pool_id() const
+{
+	return m_master->get_id();
+}
+
+AsyncFrame* BaseThread::get_asynframe() const
+{
+	return m_master->get_asynframe();
+}
+
+void NetBaseThread::do_accept(NetConnect* conn)
+{
+	for (;;)
+	{
+		SOCKET_HANDLE fd = accept(conn->m_fd, nullptr, nullptr);
+		if (fd != INVALID_SOCKET)
+		{
+			int32_t ret = on_accept(fd);
+			if (ret == 0)
+			{
+				get_asynframe()->send_thread_msg(NET_ACCEPT_CLIENT_REQ,
+					nullptr, 0, MsgBufferType::STATIC,
+					{ static_cast<uint64_t>(fd) }, MsgContextType::STATIC,
+					conn->m_client_thread_pool, conn->m_client_thread,
+					this, false);
+			}
+			else
+			{
+				if (ret == 1)
+				{ //reject and close conn
+					::closesocket(fd);
+				}
+			}
+		}
+		else
+		{
+			int32_t errcode = GET_SOCK_ERR();
+			if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+			{
+				on_error(conn, errcode);
+			}
+			break;
+		}
+	}
+}
+
+void NetBaseThread::do_connect(NetConnect* conn)
+{
+	int32_t sockerr = -1;
+	socklen_t len = sizeof(sockerr);
+	getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR,
+		reinterpret_cast<char*>(&sockerr), &len);
+	if (sockerr == 0)
+	{ //connect success
+		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
+	}
+}
+
+void NetBaseThread::do_send(NetConnect* conn)
+{
+	while (!conn->m_send_list.empty())
+	{
+		SendMsgType& msg = conn->m_send_list.front();
+		int32_t n = ::send(conn->m_fd, msg.data + msg.bytes_sent,
+			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
+		if (n >= 0)
+		{
+			msg.bytes_sent += n;
+			if (msg.bytes_sent == msg.data_len)
+			{
+				free_buffer(msg.data, msg.buf_type);
+				conn->m_send_list.pop();
+			}
+			///TODO: return if n==0
+		}
+		else
+		{
+			int32_t errcode = GET_SOCK_ERR();
+			if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+			{
+				///TODO: drop msg if fail several times
+				on_error(conn, errcode);
+			}
+			return;
+		}
+	}
+	set_read_event(conn);
+}
+
+void NetBaseThread::do_recv(NetConnect* conn)
+{
+L_READ:
+	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
+	if (len == 0)
+	{
+		conn->enlarge_recv_buffer();
+		len = conn->m_recv_buf_len - conn->m_recv_len;
+	}
+
+	int32_t recv_len = recv(conn->m_fd,
+		conn->m_recv_buf + conn->m_recv_len,
+		len, 0);
+
+	if (recv_len > 0)
+	{ //recv data
+		conn->m_recv_len += recv_len;
+		int32_t package_len = frame(conn);
+		if (package_len == conn->m_recv_len)
+		{ //recv one package
+			process_net_msg(conn);
+			conn->m_recv_len = 0;
+		}
+		else if (package_len < conn->m_recv_len)
+		{ //recv more than one package
+			int32_t remain_len = conn->m_recv_len - package_len;
+			process_net_msg(conn);
+			memmove(conn->m_recv_buf,
+				conn->m_recv_buf + package_len, remain_len);
+			conn->m_recv_len = remain_len;
+		}
+		else
+		{ // recv partial package
+			conn->enlarge_recv_buffer(package_len);
+		}
+
+		if (recv_len == len)
+		{
+			goto L_READ;
+		}
+	}
+	else if (recv_len == 0)
+	{ //peer close conn ///TODO: 半关闭
+		if (conn->m_recv_len > 0)
+		{
+			process_net_msg(conn);
+		}
+		remove_conn(conn);
+	}
+	else
+	{ //error
+		int32_t errcode = GET_SOCK_ERR();
+		if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+		{
+			on_error(conn, errcode);
+			remove_conn(conn);
+		}
+	}
+}
+
+int32_t NetBaseThread::set_sock_nonblock(SOCKET_HANDLE fd)
+{
+#ifdef _WIN32
+	u_long non_block = 1;
+	int ret = ioctlsocket(fd, FIONBIO, &non_block);
+#else
+	//long flags = fcntl(fd, F_GETFL);
+	int ret = fcntl(fd, F_SETFL, /*flags |*/ O_NONBLOCK);
+#endif
+	assert(ret == 0);
+	return  ret == 0 ? 0 : GET_SOCK_ERR();
+}
+
+std::pair<int32_t, SOCKET_HANDLE>
+NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
+	thread_pool_id_t client_thread_pool, thread_id_t client_thread)
+{
+	int ret = 0;
+	struct sockaddr_in addr = {};
+	SOCKET_HANDLE fd = socket(AF_INET, SOCK_STREAM, 0);
+	assert(fd != INVALID_SOCKET);
+	if (fd == INVALID_SOCKET)
+		return std::make_pair(GET_SOCK_ERR(), fd);
+
+	ret = set_sock_nonblock(fd);
+	if (ret != 0) goto L_ERR;
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
+	if (ret != 1) goto L_ERR; //@return 0 if ip invalid, -1 if error occur
+
+	ret = bind(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
+	if (ret != 0) goto L_ERR;
+
+	ret = listen(fd, 100);
+	if (ret == 0)
+	{
+		NetConnect conn(fd, client_thread_pool, client_thread);
+		add_conn(&conn);
+		return std::make_pair(0, fd);
+	}
+	else goto L_ERR;
+
+L_ERR:
+	ret = GET_SOCK_ERR();
+	::closesocket(fd);
+	return std::make_pair(ret, fd);
+}
+
+std::pair<int32_t, SOCKET_HANDLE>
+NetBaseThread::create_connect_socket(const char* ip, uint16_t port)
+{
+	int ret = 0;
+	struct sockaddr_in addr = {};
+	SOCKET_HANDLE fd = socket(AF_INET, SOCK_STREAM, 0);
+	assert(fd != INVALID_SOCKET);
+	if (fd == INVALID_SOCKET)
+		return std::make_pair(GET_SOCK_ERR(), fd);
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
+	if (ret != 1) goto L_ERR; //@return 0 if ip invalid, -1 if error occur
+	for (;;)
+	{
+		int ret = connect(fd,
+			reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
+		if (ret == 0)
+		{
+			NetConnect conn(fd);
+			add_conn(&conn);
+			return std::make_pair(0, fd);
+		}
+		else
+		{
+			ret = GET_SOCK_ERR();
+			if (ret == EWOULDBLOCK/*win*/ || ret == EINPROGRESS/*linux*/)
+			{
+				NetConnect conn(fd);
+				conn.m_state = NetConnectState::NET_CONN_CONNECTING;
+				add_conn(&conn);
+				return std::make_pair(0, fd);
+			}
+			else if (ret == EINTR/*linux*/)
+			{
+				continue;
+			}
+			else goto L_ERR;
+		}
+	}
+L_ERR:
+	ret = GET_SOCK_ERR();
+	::closesocket(fd);
+	return std::make_pair(ret, fd);
+}
+
+void NetBaseThread::on_read_event(NetConnect* conn)
 {
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
-		on_read(conn);
+		do_recv(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
-		on
+		do_accept(conn);
 		break;
 	case NetConnectState::NET_CONN_CONNECTING:
+		//non-blocking connect check write event
 		break;
 	case NetConnectState::NET_CONN_CLOSING:
+		//ignore
+		break;
+	case NetConnectState::NET_CONN_CLOSED:
+		//ignore
 		break;
 	case NetConnectState::NET_CONN_ERROR:
+		//ignore
 		break;
 	default:
 		assert(0);
@@ -55,30 +315,37 @@ void MultiWaitNetThread::on_read_event(NetConnect* conn)
 	}
 }
 
-void MultiWaitNetThread::on_write_event(NetConnect* conn)
+void NetBaseThread::on_write_event(NetConnect* conn)
 {
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
+		do_send(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
+		//ignore
 		break;
 	case NetConnectState::NET_CONN_CONNECTING:
+		do_connect(conn);
 		break;
 	case NetConnectState::NET_CONN_CLOSING:
+		do_send(conn);
+		if (conn->m_send_list.empty())
+		{
+			remove_conn(conn);
+		}
+		break;
+	case NetConnectState::NET_CONN_CLOSED:
+		//ignore
 		break;
 	case NetConnectState::NET_CONN_ERROR:
+		//ignore
 		break;
 	default:
 		assert(0);
 		break;
 	}
 }
-
-void MultiWaitNetThread::on_write(NetConnect* conn)
-{
-}
-
 
 static int32_t http_get_header_len(char* package, uint32_t package_len)
 {
@@ -139,91 +406,104 @@ static int32_t http_get_request_header(char* header, uint32_t header_len,
 	return ERR_NOT_FOUND;
 }
 
-int32_t MultiWaitNetThread::frame()
+int32_t NetBaseThread::frame(NetConnect* conn)
 {
-	if (m_header_len == 0)
+	if (conn->m_header_len == 0)
 	{
-		if (m_recv_len < MIN_PACKAGE_SIZE) return MIN_PACKAGE_SIZE;
-		if (memcmp(m_recv_buf, "GET", 3) == 0)
+		if (conn->m_recv_len < MIN_PACKAGE_SIZE) return MIN_PACKAGE_SIZE;
+		if (memcmp(conn->m_recv_buf, "GET", 3) == 0)
 		{
-			m_net_msg_type = NetMsgType::HTTP_GET;
+			conn->m_net_msg_type = NetMsgType::HTTP_GET;
 		}
-		else if (memcmp(m_recv_buf, "POST", 4) == 0)
+		else if (memcmp(conn->m_recv_buf, "POST", 4) == 0)
 		{
-			m_net_msg_type = NetMsgType::HTTP_POST;
+			conn->m_net_msg_type = NetMsgType::HTTP_POST;
 		}
-		else if (memcmp(m_recv_buf, "HTTP", 4) == 0)
+		else if (memcmp(conn->m_recv_buf, "HTTP", 4) == 0)
 		{
-			m_net_msg_type = NetMsgType::HTTP_RESP;
+			conn->m_net_msg_type = NetMsgType::HTTP_RESP;
 		}
-		else return m_recv_len; //unsupported custom binary m_recv_buf
+		else return conn->m_recv_len; //unsupported custom binary conn->m_recv_buf
 
-		m_header_len = http_get_header_len(m_recv_buf, m_recv_len);
-		if (m_header_len == 0) return m_recv_len * 2;
+		conn->m_header_len = http_get_header_len(conn->m_recv_buf, conn->m_recv_len);
+		if (conn->m_header_len == 0) return conn->m_recv_len * 2;
 	}
 
-	if (m_body_len == 0)
+	if (conn->m_body_len == 0)
 	{
-		if (m_net_msg_type == NetMsgType::HTTP_GET) return m_header_len;
+		if (conn->m_net_msg_type == NetMsgType::HTTP_GET) return conn->m_header_len;
 		char* p;
 		uint32_t len;
-		if (http_get_request_header(m_recv_buf, m_header_len,
+		if (http_get_request_header(conn->m_recv_buf, conn->m_header_len,
 			"Content-Length", strlen("Content-Length"),
 			&p, &len) == 0)
 		{
-			m_body_len = atoi(p);
-			return m_header_len + m_body_len;
+			conn->m_body_len = atoi(p);
+			return conn->m_header_len + conn->m_body_len;
 		}
-		else if(http_get_request_header(m_recv_buf, m_header_len,
+		else if(http_get_request_header(conn->m_recv_buf, conn->m_header_len,
 			"Transfer-Encoding", strlen("Transfer-Encoding"),
 			&p, &len) == 0)
 		{
 			if (memcmp(p, "chunked", len) == 0)
 			{
-				if (m_net_msg_type == NetMsgType::HTTP_POST)
-					m_net_msg_type = NetMsgType::HTTP_POST_CHUNKED;
-				else if (m_net_msg_type == NetMsgType::HTTP_RESP)
-					m_net_msg_type = NetMsgType::HTTP_RESP_CHUNKED;
+				if (conn->m_net_msg_type == NetMsgType::HTTP_POST)
+					conn->m_net_msg_type = NetMsgType::HTTP_POST_CHUNKED;
+				else if (conn->m_net_msg_type == NetMsgType::HTTP_RESP)
+					conn->m_net_msg_type = NetMsgType::HTTP_RESP_CHUNKED;
 
-				if (m_recv_len > m_header_len + 4) //4 == strlen("\r\n""\r\n")
+				if (conn->m_recv_len > conn->m_header_len + 4) //4 == strlen("\r\n""\r\n")
 				{
 					char* end;
-					p = m_recv_buf + m_header_len;
-					m_body_len = strtol(p, &end, 16);
-					m_body_len += end - p + 4;
-					return m_header_len + m_body_len;
+					p = conn->m_recv_buf + conn->m_header_len;
+					conn->m_body_len = strtol(p, &end, 16);
+					conn->m_body_len += end - p + 4;
+					return conn->m_header_len + conn->m_body_len;
 				}
-				else return m_recv_len * 2;
+				else return conn->m_recv_len * 2;
 			}
-			else return m_recv_len; //unsupported
+			else return conn->m_recv_len; //unsupported
 		}
-		else return m_recv_len; ///TODO:recv until conn close
+		else return conn->m_recv_len; ///TODO:recv until conn close
 	}
 	else
 	{
-		return m_header_len + m_body_len;
+		return conn->m_header_len + conn->m_body_len;
 	}
 }
 
-void MultiWaitNetThread::on_read(NetConnect* conn)
-{}
+void NetBaseThread::run()
+{
+	for (;;)
+	{
+		uint32_t net_msg_cnt = poll();
+		uint32_t thread_msg_cnt = check_timer_and_thread_msg();
+		if (thread_msg_cnt == 0 && net_msg_cnt == 0)
+		{
+			usleep(1 * 1000);
+		}
+	}
+}
 
-void MultiWaitNetThread::on_accept(NetConnect* conn)
-{}
+int32_t is_str_ipv4(const char* ipv4str)
+{
+	if (!isdigit(*ipv4str)) return 0;
+	do{ ++ipv4str; } while (isdigit(*ipv4str));
+	if (*ipv4str++ != '.') return 0;
 
-void MultiWaitNetThread::on_close(NetConnect* conn)
-{}
+	if (!isdigit(*ipv4str)) return 0;
+	do{ ++ipv4str; } while (isdigit(*ipv4str));
+	if (*ipv4str++ != '.') return 0;
 
-void MultiWaitNetThread::on_error(NetConnect* conn, int32_t errcode)
-{}
+	if (!isdigit(*ipv4str)) return 0;
+	do{ ++ipv4str; } while (isdigit(*ipv4str));
+	if (*ipv4str++ != '.') return 0;
 
-void MultiWaitNetThread::process_msg(NetConnect* conn)
-{}
+	if (!isdigit(*ipv4str)) return 0;
+	do{++ipv4str;}while (isdigit(*ipv4str));
+	if (*ipv4str != 0) return 0;
 
-void MultiWaitNetThread::force_close(NetConnect* conn)
-{}
-
-void MultiWaitNetThread::reset(NetConnect* conn)
-{}
+	return 1;
+}
 
 } //end of namespace asyncpp

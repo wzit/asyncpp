@@ -4,11 +4,14 @@
 namespace asyncpp
 {
 
-HANDLE AsyncFrame::m_iocp = INVALID_HANDLE_VALUE;
-
 #ifdef _WIN32
+HANDLE AsyncFrame::m_iocp = INVALID_HANDLE_VALUE;
+#endif
+
 AsyncFrame::AsyncFrame()
 {
+	m_thread_pools.push_back(new ThreadPool(this, 0));
+#if 0
 	if (m_iocp == INVALID_HANDLE_VALUE)
 	{
 		m_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
@@ -18,10 +21,13 @@ AsyncFrame::AsyncFrame()
 			fprintf(stderr, "CreateIoCompletionPort fail:%d, errno:%d[%s]\n", GetLastError(), errno, strerror(errno));
 		}
 	}
+#endif
 }
 
 AsyncFrame::~AsyncFrame()
-{}
+{
+	for (auto t : m_thread_pools)delete t;
+}
 
 static void thread_main(BaseThread* t)
 {
@@ -45,6 +51,16 @@ void AsyncFrame::start_thread(thread_pool_id_t t_pool_id, thread_id_t t_id)
 
 void AsyncFrame::start()
 {
+#ifdef _WIN32
+	int ret;
+	WSADATA wsaData;
+	if ((ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
+	{
+		printf("WSAStartup failed\n");
+		return;
+	}
+#endif
+
 	//start all thread
 	for(auto t_pool : m_thread_pools)
 	{
@@ -52,10 +68,6 @@ void AsyncFrame::start()
 		{
 			start_thread(t);
 		}
-	}
-	for(auto t : m_global_threads)
-	{
-		start_thread(t);
 	}
 
 	for (;;)
@@ -69,8 +81,6 @@ void AsyncFrame::start()
 		usleep(10 * 1000);
 	}
 }
-
-#endif
 
 } //end of namespace asyncpp
 
