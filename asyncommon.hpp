@@ -299,13 +299,15 @@ public:
 	{
 		if (m_last_second != g_unix_timestamp)
 		{
-			uint32_t seconds = g_unix_timestamp - m_last_second;
-			seconds = seconds%MAX_RANGE - 1;
+			uint32_t seconds = static_cast<uint32_t>(
+				g_unix_timestamp - m_last_second - 1);
+			if (seconds > MAX_RANGE) seconds = MAX_RANGE;
 			while (seconds != 0)
 			{
 				m_pos = (m_pos + 1) % MAX_RANGE;
 				m_r_sample[m_pos] = 0;
 				m_w_sample[m_pos] = 0;
+				--seconds;
 			}
 			m_last_second = g_unix_timestamp;
 			m_pos = (m_pos + 1) % MAX_RANGE;
@@ -327,7 +329,7 @@ public:
 		uint64_t r = m_r_sample[pos];
 		uint64_t w = m_w_sample[pos];
 		
-		seconds %= MAX_RANGE;
+		if(seconds > MAX_RANGE) senconds = MAX_RANGE;
 		pos += MAX_RANGE;
 		for (uint32_t sec = 1; sec < seconds; ++sec)
 		{

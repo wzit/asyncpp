@@ -18,22 +18,25 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t ms)
 	ret = epoll_wait(m_fd, evs, 16, ms);
 	if(ret > 0)
 	{
+		uint32_t bytes_sent = 0;
+		uint32_t bytes_recv = 0;
 		for(int32_t i = 0; i<ret; ++i)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(evs[i].data.fd));
 			if(evs[i].events & EPOLLIN)
 			{
-				t->on_read_event(conn);
+				bytes_recv += t->on_read_event(conn);
 			}
 			if(evs[i].events & EPOLLOUT)
 			{
-				t->on_write_event(conn);
+				bytes_sent += t->on_write_event(conn);
 			}
 			if(evs[i].events & EPOLLERR)
 			{
 				t->on_error_event(conn);
 			}
 		}
+		t->m_ss.sample(bytes_recv, bytes_sent);
 		return ret;
 	}
 	else if(ret < 0)
@@ -114,18 +117,21 @@ int32_t SelSelector::poll(void* p_thread, uint32_t ms)
 	n = select(max_fd + 1, &read_fds, &write_fds, nullptr, &tv);
 	if (n > 0)
 	{
+		uint32_t bytes_sent = 0;
+		uint32_t bytes_recv = 0;
 		for (auto it = m_fds.begin(); it != m_fds.end(); ++it)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(it->first));
 			if (FD_ISSET(it->first, &read_fds))
 			{
-				t->on_read_event(conn);
+				bytes_recv += t->on_read_event(conn);
 			}
 			if (FD_ISSET(it->first, &write_fds))
 			{
-				t->on_write_event(conn);
+				bytes_sent += t->on_write_event(conn);
 			}
 		}
+		t->m_ss.sample(bytes_recv, bytes_sent);
 	}
 	else if (n < 0)
 	{

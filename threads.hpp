@@ -129,6 +129,8 @@ public:
 	}
 };
 
+int32_t dns_query(const char* host, char* ip);
+
 class DnsThread : public BaseThread
 {
 public:
@@ -339,7 +341,7 @@ enum ReservedThreadMsgType
 /************** Net Recv & Send Thread ****************/
 class NetBaseThread : public BaseThread
 {
-protected:
+public:
 	SpeedSample<16> m_ss;
 public:
 	NetBaseThread() = default;
@@ -349,8 +351,8 @@ public:
 public:
 	virtual void run() override;
 public:
-	void on_read_event(NetConnect* conn);
-	void on_write_event(NetConnect* conn);
+	uint32_t on_read_event(NetConnect* conn);
+	uint32_t on_write_event(NetConnect* conn);
 	void on_error_event(NetConnect* conn)
 	{
 		on_error(conn, GET_SOCK_ERR());
@@ -358,8 +360,8 @@ public:
 protected:
 	void do_accept(NetConnect* conn);
 	void do_connect(NetConnect* conn);
-	void do_send(NetConnect* conn);
-	void do_recv(NetConnect* conn);
+	uint32_t do_send(NetConnect* conn);
+	uint32_t do_recv(NetConnect* conn);
 protected:
 	int32_t set_sock_nonblock(SOCKET_HANDLE fd);
 	std::pair<int32_t, SOCKET_HANDLE>

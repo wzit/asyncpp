@@ -40,16 +40,16 @@ public:
 	/**
 	添加一个监听线程组，用于高并发场景
 	这会创建一个全局监听线程ListenThread，
-	accept上来的clien会被发给client_thread_poll_id线程组中处理
+	accept上来的clien会被发给client_thread_pool_id线程组中处理
 	@return <success/fail, listener thread id>
 	*/
 	template<typename ListenThread>
 	std::pair<bool, thread_id_t> add_listener(
 		const char* ip, uint16_t port,
-		thread_pool_id_t client_thread_poll_id)
+		thread_pool_id_t client_thread_pool_id)
 	{
 		thread_id_t listen_id = add_thread<ListenThread>(0);
-		bool ret = add_listener(ip, port, listen_id, client_thread_poll_id, -1);
+		bool ret = add_listener(ip, port, listen_id, client_thread_pool_id, -1);
 		return std::pair<bool, thread_id_t>(ret, listen_id);
 	}
 

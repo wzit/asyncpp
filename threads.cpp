@@ -51,6 +51,46 @@ AsyncFrame* BaseThread::get_asynframe() const
 	return m_master->get_asynframe();
 }
 
+int32_t dns_query(const char* host, char* ip)
+{
+	struct addrinfo hints;
+	struct addrinfo* result = nullptr;
+	struct sockaddr_in* psin = nullptr;
+	int32_t ret = 0;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET; //IPv4
+	hints.ai_socktype = 0; //any address type
+	//hints.ai_flags = AI_CANONNAME;
+	hints.ai_protocol = 0; //any protocol;
+	hints.ai_addrlen = 0;
+	hints.ai_addr = nullptr;
+	hints.ai_canonname = nullptr;
+	hints.ai_next = nullptr;
+
+	ret = getaddrinfo(host, nullptr, &hints, &result);
+	if (0 != ret)
+	{
+		logger_error(logger, "getaddrinfo of %s fail:%d[%s], "
+			"errno:%d[%s], result: %p", host, ret,
+			gai_strerror(ret), errno, strerror(errno), result);
+	}
+	else
+	{
+		psin = reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
+		const char* p = inet_ntop(AF_INET,
+			&psin->sin_addr, ip, MAX_IP);
+		if (NULL == p)
+		{
+			ret = errno;
+			logger_debug(logger, "inet_ntop fail:%d[%s]", ret, strerror(ret));
+		}
+	}
+	freeaddrinfo(result);
+
+	return ret;
+}
+
 void DnsThread::process_msg(ThreadMsg& msg)
 {
 	switch (msg.m_type)
@@ -58,42 +98,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 	case NET_QUERY_DNS_REQ:
 	{
 		QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
-		struct addrinfo hints;
-		struct addrinfo* result = nullptr;
-		struct sockaddr_in* psin = nullptr;
-		int32_t ret = 0;
-
-		memset(&hints, 0, sizeof(struct addrinfo));
-		hints.ai_family = AF_INET; //IPv4
-		hints.ai_socktype = 0; //any address type
-		//hints.ai_flags = AI_CANONNAME;
-		hints.ai_protocol = 0; //any protocol;
-		hints.ai_addrlen = 0;
-		hints.ai_addr = nullptr;
-		hints.ai_canonname = nullptr;
-		hints.ai_next = nullptr;
-
-		ret = getaddrinfo(msg.m_buf, nullptr, &hints, &result);
-		if (0 != ret)
-		{
-			logger_error(logger, "getaddrinfo of %s fail:%d[%s], "
-				"errno:%d[%s], result: %p", msg.m_buf, ret,
-				gai_strerror(ret), errno, strerror(errno), result);
-		}
-		else
-		{
-			psin = reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
-			const char* p = inet_ntop(AF_INET,
-				&psin->sin_addr, dnsctx->m_ip, MAX_IP);
-			if (NULL == p)
-			{
-				ret = errno;
-				logger_debug(logger, "inet_ntop fail:%s", strerror(ret));
-			}
-		}
-		freeaddrinfo(result);
-
-		dnsctx->m_ret = ret;
+		dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
 		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
@@ -157,8 +162,9 @@ void NetBaseThread::do_connect(NetConnect* conn)
 	}
 }
 
-void NetBaseThread::do_send(NetConnect* conn)
+uint32_t NetBaseThread::do_send(NetConnect* conn)
 {
+	uint32_t bytes_sent = 0;
 	while (!conn->m_send_list.empty())
 	{
 		SendMsgType& msg = conn->m_send_list.front();
@@ -166,6 +172,7 @@ void NetBaseThread::do_send(NetConnect* conn)
 			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
+			bytes_sent += n;
 			msg.bytes_sent += n;
 			if (msg.bytes_sent == msg.data_len)
 			{
@@ -182,14 +189,16 @@ void NetBaseThread::do_send(NetConnect* conn)
 				///TODO: drop msg if fail several times
 				on_error(conn, errcode);
 			}
-			return;
+			return bytes_sent;
 		}
 	}
 	set_read_event(conn);
+	return bytes_sent;
 }
 
-void NetBaseThread::do_recv(NetConnect* conn)
+uint32_t NetBaseThread::do_recv(NetConnect* conn)
 {
+	uint32_t bytes_recv = 0;
 L_READ:
 	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
 	if (len == 0)
@@ -204,6 +213,7 @@ L_READ:
 
 	if (recv_len > 0)
 	{ //recv data
+		bytes_recv += recv_len;
 		conn->m_recv_len += recv_len;
 		int32_t package_len = frame(conn);
 		if (package_len == conn->m_recv_len)
@@ -246,6 +256,8 @@ L_READ:
 			remove_conn(conn);
 		}
 	}
+
+	return bytes_recv;
 }
 
 int32_t NetBaseThread::set_sock_nonblock(SOCKET_HANDLE fd)
@@ -345,12 +357,12 @@ L_ERR:
 	return std::make_pair(ret, fd);
 }
 
-void NetBaseThread::on_read_event(NetConnect* conn)
+uint32_t NetBaseThread::on_read_event(NetConnect* conn)
 {
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
-		do_recv(conn);
+		return do_recv(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
 		do_accept(conn);
@@ -371,14 +383,15 @@ void NetBaseThread::on_read_event(NetConnect* conn)
 		assert(0);
 		break;
 	}
+	return 0;
 }
 
-void NetBaseThread::on_write_event(NetConnect* conn)
+uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 {
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
-		do_send(conn);
+		return do_send(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
 		//ignore
@@ -387,11 +400,14 @@ void NetBaseThread::on_write_event(NetConnect* conn)
 		do_connect(conn);
 		break;
 	case NetConnectState::NET_CONN_CLOSING:
-		do_send(conn);
+	{
+		uint32_t bytes_sent = do_send(conn);
 		if (conn->m_send_list.empty())
 		{
 			remove_conn(conn);
 		}
+		return bytes_sent;
+	}
 		break;
 	case NetConnectState::NET_CONN_CLOSED:
 		//ignore
@@ -403,6 +419,7 @@ void NetBaseThread::on_write_event(NetConnect* conn)
 		assert(0);
 		break;
 	}
+	return 0;
 }
 
 static int32_t http_get_header_len(char* package, uint32_t package_len)
