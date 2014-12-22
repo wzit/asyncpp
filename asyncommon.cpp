@@ -25,6 +25,9 @@ namespace asyncpp
 
 volatile time_t g_unix_timestamp = time(nullptr);
 
+thread_pool_id_t dns_thread_pool_id;
+thread_id_t dns_thread_id;
+
 static Logger _logger = { STDOUT_FILENO, LOGGER_ALL };
 
 Logger* logger = &_logger;
@@ -44,7 +47,7 @@ void logger_update_time_string()
 	}
 }
 
-int32_t Logger::logger_impl(const char* buf, uint32_t l)
+int32_t Logger::log(const char* buf, uint32_t l)
 {
 	return write(m_fd, buf, l);
 }

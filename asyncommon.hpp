@@ -17,6 +17,10 @@
 namespace asyncpp
 {
 
+const int32_t MAX_IPV4 = 16;
+const int32_t MAX_IPV6 = 40;
+const int32_t MAX_IP = MAX_IPV6;
+
 extern volatile time_t g_unix_timestamp;
 
 #ifdef _WIN32
@@ -58,7 +62,7 @@ public:
 	int32_t m_level;
 
 public:
-	int32_t logger_impl(const char* buf, uint32_t l);
+	int32_t log(const char* buf, uint32_t l);
 };
 
 extern Logger* logger;
@@ -73,7 +77,7 @@ if (LOGGER_##logger_level >= logger->m_level)\
 	int32_t _lg_l; \
 	logger_update_time_string(); \
 	_lg_l = snprintf(_lg_buf, LOGGER_LINE_SIZE, "[" #logger_level "] %s [%s:%u: %s] " fmt "\n", logger_time_string_buffer, file, line, func, ##__VA_ARGS__); \
-	if(_lg_l>0)logger_impl(logger,_lg_buf,_lg_l<LOGGER_LINE_SIZE?_lg_l:LOGGER_LINE_SIZE-1); \
+	if(_lg_l>0) logger->log(_lg_buf,_lg_l<LOGGER_LINE_SIZE?_lg_l:LOGGER_LINE_SIZE-1); \
 }\
 
 #define logger_trace(logger, fmt, ...) _logger_wrapper(logger, TRACE, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
@@ -88,6 +92,9 @@ typedef uint16_t thread_pool_id_t;
 
 const thread_id_t INVALID_THREAD_ID = static_cast<thread_id_t>(-1);
 const thread_pool_id_t INVALID_THREAD_POOL_ID = static_cast<thread_pool_id_t>(-1);
+
+extern thread_pool_id_t dns_thread_pool_id;
+extern thread_id_t dns_thread_id;
 
 enum ERROR_CODE : int32_t
 {
@@ -127,7 +134,7 @@ enum class MsgBufferType : uint8_t
 class MsgContext
 {
 public:
-	virtual ~MsgContext() = 0;
+	virtual ~MsgContext(){}
 };
 
 union MsgCtx

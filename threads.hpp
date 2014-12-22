@@ -129,6 +129,12 @@ public:
 	}
 };
 
+class DnsThread : public BaseThread
+{
+public:
+	virtual void process_msg(ThreadMsg& msg) override;
+};
+
 /************** Net Connection Info ****************/
 enum class NetConnectState : uint8_t
 {
@@ -284,6 +290,23 @@ struct net_conn_eq
 	{ return val1.m_fd == val2.m_fd; }
 };
 
+class QueryDnsRespCtx : public MsgContext
+{
+public:
+	int32_t m_ret;
+	thread_pool_id_t m_src_thread_pool_id;
+	thread_id_t m_src_thread_id;
+	uint16_t m_port;
+	char m_ip[MAX_IP];
+
+	QueryDnsRespCtx() = default;
+	virtual ~QueryDnsRespCtx() = default;
+
+	QueryDnsRespCtx(const QueryDnsRespCtx&) = delete;
+	QueryDnsRespCtx& operator=(const QueryDnsRespCtx&) = delete;
+
+};
+
 enum ReservedThreadMsgType
 {
 	MSG_TYPE_UNKNOWN,
@@ -291,18 +314,21 @@ enum ReservedThreadMsgType
 
 	NET_CONNECT_HOST_REQ,   //msg.m_buf = host
 							//msg.m_ctx.i64 = port
-	NET_CONNECT_HOST_RESP,	//msg.m_ctx.i64 = ret<<32 | fd
+	NET_CONNECT_HOST_RESP,	//msg.m_buf = host
+							//msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_LISTEN_ADDR_REQ,	//msg.m_buf = ip
 							//msg.m_ctx.i64 = port<<32 | client_thread_pool_id<<16 | client_thread_id
-	NET_LISTEN_ADDR_RESP,	//msg.m_ctx.i64 = ret<<32 | fd
+	NET_LISTEN_ADDR_RESP,	// msg.m_buf = ip
+							//msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_ACCEPT_CLIENT_REQ,  //msg.m_ctx.i64 = fd
 	NET_ACCEPT_CLIENT_RESP,	//no response
 	
 	NET_QUERY_DNS_REQ,      //msg.m_buf = host
-	NET_QUERY_DNS_RESP,		//msg.m_buf = ip
-							//msg.m_ctx.i64 = result code
+							//msg.m_ctx.obj = QueryDnsRespCtx*
+	NET_QUERY_DNS_RESP,		//msg.m_buf = host
+							//msg.m_ctx.obj = QueryDnsRespCtx*
 
 	NET_CLOSE_CONN_REQ,		//msg.m_ctx.i64 = force_close << 32 | conn_id
 	NET_CLOSE_CONN_RESP,	//no response
@@ -439,7 +465,18 @@ public:
 			}
 			else
 			{
-				///TODO: send DNS query require
+				MsgCtx ctx;
+				QueryDnsRespCtx* dnsctx = new QueryDnsRespCtx;
+				dnsctx->m_src_thread_pool_id = msg.m_src_thread_pool_id;
+				dnsctx->m_src_thread_id = msg.m_src_thread_id;
+				dnsctx->m_port = static_cast<uint16_t>(msg.m_ctx.i64);
+				ctx.obj = dnsctx;
+				get_asynframe()->send_thread_msg(NET_QUERY_DNS_REQ,
+					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+					ctx, MsgContextType::OBJECT,
+					dns_thread_pool_id, dns_thread_id, this);
+				msg.m_buf = nullptr;
+				msg.m_buf_type = MsgBufferType::STATIC;
 				///TODO: set DNS timeout timer
 			}
 			break;
@@ -458,18 +495,27 @@ public:
 		}
 			break;
 		case NET_QUERY_DNS_RESP:
-			if ((msg.m_ctx.i64 >> 32) == 0)
-			{ ///TODO: get port and host from timer context
-				const auto& r = create_connect_socket(msg.m_buf,
-					static_cast<uint16_t>(msg.m_ctx.i64));
-
-				///TODO: get src thread id from the context
-				get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
-					nullptr, 0, MsgBufferType::STATIC,
-					{ static_cast<uint64_t>(r.first) << 32 |
-					static_cast<uint32_t>(r.second) },
-					MsgContextType::STATIC, msg, this);
+		{
+			MsgCtx respctx;
+			QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
+			if (dnsctx->m_ret == 0)
+			{
+				const auto& r = create_connect_socket(dnsctx->m_ip, dnsctx->m_port);
+				respctx.i64 = static_cast<uint64_t>(r.first) << 32
+					| static_cast<uint32_t>(r.second);
 			}
+			else
+			{
+				respctx.i64 = static_cast<uint64_t>(dnsctx->m_ret) << 32
+					| 0xffffffffllu;
+			}
+			get_asynframe()->send_thread_msg(NET_CONNECT_HOST_RESP,
+				msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+				respctx, MsgContextType::STATIC, dnsctx->m_src_thread_pool_id,
+				dnsctx->m_src_thread_id, this);
+			msg.m_buf = nullptr;
+			msg.m_buf_type = MsgBufferType::STATIC;
+		}
 			break;
 		default:
 			break;

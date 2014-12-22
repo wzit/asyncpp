@@ -10,7 +10,12 @@ HANDLE AsyncFrame::m_iocp = INVALID_HANDLE_VALUE;
 
 AsyncFrame::AsyncFrame()
 {
+	/* global thread pool */
 	m_thread_pools.push_back(new ThreadPool(this, 0));
+
+	/* add dns thread to global thread poll*/
+	dns_thread_pool_id = static_cast<thread_pool_id_t>(0);
+	dns_thread_id = add_thread<DnsThread>(dns_thread_pool_id);
 #if 0
 	if (m_iocp == INVALID_HANDLE_VALUE)
 	{

@@ -51,6 +51,64 @@ AsyncFrame* BaseThread::get_asynframe() const
 	return m_master->get_asynframe();
 }
 
+void DnsThread::process_msg(ThreadMsg& msg)
+{
+	switch (msg.m_type)
+	{
+	case NET_QUERY_DNS_REQ:
+	{
+		QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
+		struct addrinfo hints;
+		struct addrinfo* result = nullptr;
+		struct sockaddr_in* psin = nullptr;
+		int32_t ret = 0;
+
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_family = AF_INET; //IPv4
+		hints.ai_socktype = 0; //any address type
+		//hints.ai_flags = AI_CANONNAME;
+		hints.ai_protocol = 0; //any protocol;
+		hints.ai_addrlen = 0;
+		hints.ai_addr = nullptr;
+		hints.ai_canonname = nullptr;
+		hints.ai_next = nullptr;
+
+		ret = getaddrinfo(msg.m_buf, nullptr, &hints, &result);
+		if (0 != ret)
+		{
+			logger_error(logger, "getaddrinfo of %s fail:%d[%s], "
+				"errno:%d[%s], result: %p", msg.m_buf, ret,
+				gai_strerror(ret), errno, strerror(errno), result);
+		}
+		else
+		{
+			psin = reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
+			const char* p = inet_ntop(AF_INET,
+				&psin->sin_addr, dnsctx->m_ip, MAX_IP);
+			if (NULL == p)
+			{
+				ret = errno;
+				logger_debug(logger, "inet_ntop fail:%s", strerror(ret));
+			}
+		}
+		freeaddrinfo(result);
+
+		dnsctx->m_ret = ret;
+		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
+			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+			msg.m_ctx, msg.m_ctx_type, msg, this);
+		msg.m_buf = nullptr;
+		msg.m_buf_type = MsgBufferType::STATIC;
+		msg.m_ctx.obj = nullptr;
+		msg.m_ctx_type = MsgContextType::STATIC;
+	}
+		break;
+	default:
+		logger_warn(logger, "dns thread recv error mag type:%u", msg.m_type);
+		break;
+	}
+}
+
 void NetBaseThread::do_accept(NetConnect* conn)
 {
 	for (;;)
