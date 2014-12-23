@@ -329,7 +329,7 @@ public:
 		uint64_t r = m_r_sample[pos];
 		uint64_t w = m_w_sample[pos];
 		
-		if(seconds > MAX_RANGE) senconds = MAX_RANGE;
+		if(seconds > MAX_RANGE) seconds = MAX_RANGE;
 		pos += MAX_RANGE;
 		for (uint32_t sec = 1; sec < seconds; ++sec)
 		{

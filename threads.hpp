@@ -227,10 +227,10 @@ struct NetConnect
 	~NetConnect()
 	{
 		if (m_recv_buf != nullptr) free(m_recv_buf);
-		if (static_cast<int32_t>(m_fd) > 0) ::closesocket(m_fd);
+		if (m_fd != INVALID_SOCKET) ::closesocket(m_fd);
 	}
-	NetConnect(const NetConnect&) = default;
-	NetConnect& operator=(const NetConnect&) = default;
+	NetConnect(const NetConnect&) = delete;
+	NetConnect& operator=(const NetConnect&) = delete;
 	NetConnect(NetConnect&& val)
 	{
 		*this = std::move(val);
@@ -246,7 +246,7 @@ struct NetConnect
 			m_header_len = val.m_header_len;
 			m_body_len = val.m_body_len;
 			m_net_msg_type = val.m_net_msg_type;
-			m_fd = val.m_fd; val.m_fd = INVALID_SOCKET;
+			m_fd = val.m_fd; val.m_fd = INVALID_SOCKET; //do NOT close fd
 			m_client_thread_pool = val.m_client_thread_pool;
 			m_client_thread = val.m_client_thread;
 			m_state = val.m_state;
@@ -325,7 +325,7 @@ enum ReservedThreadMsgType
 							//msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_ACCEPT_CLIENT_REQ,  //msg.m_ctx.i64 = fd
-	NET_ACCEPT_CLIENT_RESP,	//no response
+	NET_ACCEPT_CLIENT_RESP,	//response ONLY on ERROR, msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_QUERY_DNS_REQ,      //msg.m_buf = host
 							//msg.m_ctx.obj = QueryDnsRespCtx*
@@ -424,15 +424,64 @@ public:
 
 int32_t is_str_ipv4(const char* ipv4str);
 
+class NonblockNetThread : public NetBaseThread
+{
+protected:
+	NetConnect m_conn;
+public:
+	NonblockNetThread() = default;
+	~NonblockNetThread() = default;
+	NonblockNetThread(const NonblockNetThread&) = delete;
+	NonblockNetThread& operator=(const NonblockNetThread&) = delete;
+
+public:
+	virtual void process_msg(ThreadMsg& msg) override;
+	virtual int32_t poll() override;
+	
+	virtual NetConnect* get_conn(uint32_t conn_id) override
+	{
+		return &m_conn;
+	}
+	virtual int32_t remove_conn(NetConnect* conn) override
+	{
+		assert(conn->m_fd != INVALID_SOCKET);
+		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
+		{
+			conn->m_state = NetConnectState::NET_CONN_CLOSED;
+			on_close(conn);
+			///TODO: 析构，关闭连接
+		}
+		return 0;
+	}
+};
+
+class ConnectThread : public NonblockNetThread
+{
+public:
+	ConnectThread() = default;
+	~ConnectThread() = default;
+	ConnectThread(const ConnectThread&) = delete;
+	ConnectThread& operator=(const ConnectThread&) = delete;
+};
+
+class ListenThread : public NonblockNetThread
+{
+public:
+	ListenThread() = default;
+	~ListenThread() = default;
+	ListenThread(const ListenThread&) = delete;
+	ListenThread& operator=(const ListenThread&) = delete;
+};
+
 template<typename Selector>
-class MultiWaitNetThread : public NetBaseThread
+class MultiplexNetThread : public NetBaseThread
 {
 private:
 	std::unordered_map<uint32_t, NetConnect> m_conns;
 	std::vector<uint32_t> m_removed_conns;
 	Selector m_selector;
 public:
-	MultiWaitNetThread()
+	MultiplexNetThread()
 		: m_conns()
 		, m_removed_conns()
 		, m_selector()
@@ -532,8 +581,7 @@ public:
 		{ // close conn
 			for (auto id : m_removed_conns)
 			{
-				if(m_conns.erase(id) != 0)
-					::closesocket(id);
+				m_conns.erase(id);
 			}
 			m_removed_conns.clear();
 		}
@@ -553,7 +601,7 @@ public:
 	}
 	virtual int32_t remove_conn(NetConnect* conn) override
 	{
-		assert(conn->id() > 0);
+		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;

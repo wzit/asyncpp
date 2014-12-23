@@ -8,7 +8,7 @@ thread_id_t g_client_work_thread;
 thread_id_t g_client_net_thread;
 
 /********************server********************/
-class ServerEchoThread : public MultiWaitNetThread<SelSelector>
+class ServerEchoThread : public MultiplexNetThread<SelSelector>
 {
 public:
 	virtual void process_net_msg(NetConnect* conn) override
@@ -38,7 +38,7 @@ void t1(uint32_t timer_id, uint64_t ctx)
 	printf("hello %llu\n", ctx);
 }
 
-class ClientNetThread : public MultiWaitNetThread<SelSelector>
+class ClientNetThread : public MultiplexNetThread<SelSelector>
 {
 protected:
 	virtual int32_t frame(NetConnect* conn) override
@@ -68,7 +68,7 @@ public:
 			break;
 		default:
 			//处理新建连接等请求
-			MultiWaitNetThread<SelSelector>::process_msg(msg);
+			MultiplexNetThread<SelSelector>::process_msg(msg);
 		}
 		free_buffer(msg.m_buf, msg.m_buf_type);
 	}

@@ -581,4 +581,52 @@ int32_t is_str_ipv4(const char* ipv4str)
 	return 1;
 }
 
+void NonblockNetThread::process_msg(ThreadMsg& msg)
+{
+	switch (msg.m_type)
+	{
+	case NET_ACCEPT_CLIENT_REQ:
+		if (m_conn.m_fd != INVALID_SOCKET)
+		{
+			logger_debug(logger, "busy, reject client:%d", m_conn.m_fd);
+			get_asynframe()->send_resp_msg(NET_ACCEPT_CLIENT_RESP,
+				nullptr, 0, MsgBufferType::STATIC,
+				{static_cast<uint64_t>(EINPROGRESS) << 32| m_conn.m_fd},
+				MsgContextType::STATIC, msg, this);
+		}
+		else
+		{
+			auto fd = static_cast<SOCKET_HANDLE>(msg.m_ctx.i64);
+			if (set_sock_nonblock(fd) == 0)
+			{ //do not send resp
+				m_conn = NetConnect(fd);
+			}
+			else
+			{ //resp
+			}
+		}
+		break;
+	default:
+		logger_warn(logger, "recv error msg:%u", msg.m_type);
+		break;
+	}
+}
+
+int32_t NonblockNetThread::poll()
+{
+	if (m_conn.m_fd != INVALID_SOCKET)
+	{
+		uint32_t bytes_sent = 0;
+		uint32_t bytes_recv = 0;
+		bytes_recv = do_recv(&m_conn);
+		if (!m_conn.m_send_list.empty())
+		{
+			bytes_recv = do_send(&m_conn);
+		}
+		m_ss.sample(bytes_recv, bytes_recv);
+		return bytes_sent + bytes_recv != 0;
+	}
+	else return 0;
+}
+
 } //end of namespace asyncpp

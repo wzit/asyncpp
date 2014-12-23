@@ -8,12 +8,12 @@
 namespace asyncpp
 {
 
-//template class MultiWaitNetThread<EpollSelector>;
+//template class MultiplexNetThread<EpollSelector>;
 
 int32_t EpollSelector::poll(void* p_thread, uint32_t ms)
 {
 	int32_t ret = 0;
-	auto t = reinterpret_cast<MultiWaitNetThread<EpollSelector>*>(p_thread);
+	auto t = reinterpret_cast<MultiplexNetThread<EpollSelector>*>(p_thread);
 	struct epoll_event evs[16];
 	ret = epoll_wait(m_fd, evs, 16, ms);
 	if(ret > 0)
@@ -77,14 +77,14 @@ void IOCPSelector::poll(void* p_thread, uint32_t ms)
 namespace asyncpp
 {
 
-//template class MultiWaitNetThread<SelSelector>;
+//template class MultiplexNetThread<SelSelector>;
 
 int32_t SelSelector::poll(void* p_thread, uint32_t ms)
 {
 	int n = 0;
 	struct timeval tv = { static_cast<decltype(tv.tv_sec)>(ms / 1000),
 		static_cast<decltype(tv.tv_usec)>((ms % 1000) * 1000) };
-	auto t = reinterpret_cast<MultiWaitNetThread<SelSelector>*>(p_thread);
+	auto t = reinterpret_cast<MultiplexNetThread<SelSelector>*>(p_thread);
 	SOCKET_HANDLE max_fd = 0;
 	fd_set read_fds;
 	fd_set write_fds;
