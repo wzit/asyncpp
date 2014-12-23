@@ -41,11 +41,11 @@
 #define closesocket(fd) close(fd)
 #define GET_SOCK_ERR() errno
 
-#ifndef _DISABLE_EPOLL
-
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
+
+#ifndef _DISABLE_EPOLL
 
 namespace asyncpp
 {
