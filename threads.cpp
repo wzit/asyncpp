@@ -147,7 +147,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 					::closesocket(fd);
 				}
 			}
-			logger_trace(logger, "socket_fd:%d", fd);
+			_TRACELOG(logger, "socket_fd:%d", fd);
 			++accept_cnt;
 		}
 		else
@@ -168,7 +168,7 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 {
 	int32_t sockerr = -1;
 	socklen_t len = sizeof(sockerr);
-	logger_trace(logger, "socket_fd:%d", conn->m_fd);
+	_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 	getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR,
 		reinterpret_cast<char*>(&sockerr), &len);
 	if (sockerr == 0)
