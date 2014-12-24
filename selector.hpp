@@ -45,6 +45,10 @@
 #define MSG_NOSIGNAL 0
 #endif
 
+#define WSAEWOULDBLOCK EWOULDBLOCK
+#define WSAEINPROGRESS EINPROGRESS
+#define WSAEINTR EINTR
+
 #ifndef _DISABLE_EPOLL
 
 namespace asyncpp

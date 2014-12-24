@@ -13,6 +13,10 @@ uint32_t BaseThread::check_timer_and_thread_msg()
 	self_msg_cnt = m_msg_queue.pop(m_msg_cache, MSG_CACHE_SIZE);
 	for (uint32_t i = 0; i < self_msg_cnt; ++i)
 	{
+		_TRACELOG(logger, "msg_type:%d, from %hu:%hu, to %hu:%hu",
+			m_msg_cache[i].m_type, m_msg_cache[i].m_src_thread_pool_id,
+			m_msg_cache[i].m_src_thread_id, m_msg_cache[i].m_dst_thread_pool_id,
+			m_msg_cache[i].m_dst_thread_id);
 		process_msg(m_msg_cache[i]);
 	}
 	if (get_thread_pool_id() != 0)
@@ -20,6 +24,10 @@ uint32_t BaseThread::check_timer_and_thread_msg()
 		pool_msg_cnt = m_master->pop(m_msg_cache, MSG_CACHE_SIZE);
 		for (uint32_t i = 0; i < pool_msg_cnt; ++i)
 		{
+			_TRACELOG(logger, "msg_type:%d, from %hu:%hu, to %hu:%hu",
+				m_msg_cache[i].m_type, m_msg_cache[i].m_src_thread_pool_id,
+				m_msg_cache[i].m_src_thread_id, m_msg_cache[i].m_dst_thread_pool_id,
+				m_msg_cache[i].m_dst_thread_id);
 			process_msg(m_msg_cache[i]);
 		}
 	}
@@ -36,7 +44,7 @@ void BaseThread::run()
 		uint32_t msg_cnt = check_timer_and_thread_msg();
 		if (msg_cnt == 0)
 		{
-			usleep(1 * 1000);
+			usleep(10 * 1000);
 		}
 	}
 }
@@ -71,7 +79,7 @@ int32_t dns_query(const char* host, char* ip)
 	ret = getaddrinfo(host, nullptr, &hints, &result);
 	if (0 != ret)
 	{
-		logger_error(logger, "getaddrinfo of %s fail:%d[%s], "
+		_ERRORLOG(logger, "getaddrinfo of %s fail:%d[%s], "
 			"errno:%d[%s], result: %p", host, ret,
 			gai_strerror(ret), errno, strerror(errno), result);
 	}
@@ -83,7 +91,7 @@ int32_t dns_query(const char* host, char* ip)
 		if (NULL == p)
 		{
 			ret = errno;
-			logger_debug(logger, "inet_ntop fail:%d[%s]", ret, strerror(ret));
+			_DEBUGLOG(logger, "inet_ntop fail:%d[%s]", ret, strerror(ret));
 		}
 	}
 	freeaddrinfo(result);
@@ -109,18 +117,20 @@ void DnsThread::process_msg(ThreadMsg& msg)
 	}
 		break;
 	default:
-		logger_warn(logger, "dns thread recv error mag type:%u", msg.m_type);
+		_WARNLOG(logger, "dns thread recv error msg type:%u", msg.m_type);
 		break;
 	}
 }
 
-void NetBaseThread::do_accept(NetConnect* conn)
+uint32_t NetBaseThread::do_accept(NetConnect* conn)
 {
+	uint32_t accept_cnt = 0;
 	for (;;)
 	{
 		SOCKET_HANDLE fd = accept(conn->m_fd, nullptr, nullptr);
 		if (fd != INVALID_SOCKET)
 		{
+			_TRACELOG(logger, "socket_fd:%d accept %d", conn->m_fd, fd);
 			int32_t ret = on_accept(fd);
 			if (ret == 0)
 			{
@@ -137,29 +147,36 @@ void NetBaseThread::do_accept(NetConnect* conn)
 					::closesocket(fd);
 				}
 			}
+			logger_trace(logger, "socket_fd:%d", fd);
+			++accept_cnt;
 		}
 		else
 		{
 			int32_t errcode = GET_SOCK_ERR();
-			if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 			{
+				_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
 				on_error(conn, errcode);
 			}
 			break;
 		}
 	}
+	return accept_cnt;
 }
 
-void NetBaseThread::do_connect(NetConnect* conn)
+uint32_t NetBaseThread::do_connect(NetConnect* conn)
 {
 	int32_t sockerr = -1;
 	socklen_t len = sizeof(sockerr);
+	logger_trace(logger, "socket_fd:%d", conn->m_fd);
 	getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR,
 		reinterpret_cast<char*>(&sockerr), &len);
 	if (sockerr == 0)
 	{ //connect success
 		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
+		return 1;
 	}
+	return 0;
 }
 
 uint32_t NetBaseThread::do_send(NetConnect* conn)
@@ -172,6 +189,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
+			_TRACELOG(logger, "socket_fd:%d send %uB", conn->m_fd, n);
 			bytes_sent += n;
 			msg.bytes_sent += n;
 			if (msg.bytes_sent == msg.data_len)
@@ -184,9 +202,10 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 		else
 		{
 			int32_t errcode = GET_SOCK_ERR();
-			if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 			{
 				///TODO: drop msg if fail several times
+				_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
 				on_error(conn, errcode);
 			}
 			return bytes_sent;
@@ -213,6 +232,8 @@ L_READ:
 
 	if (recv_len > 0)
 	{ //recv data
+		_TRACELOG(logger, "socket_fd:%d recv %uB, total:%uB",
+			conn->m_fd, recv_len, conn->m_recv_len);
 		bytes_recv += recv_len;
 		conn->m_recv_len += recv_len;
 		int32_t package_len = frame(conn);
@@ -241,6 +262,7 @@ L_READ:
 	}
 	else if (recv_len == 0)
 	{ //peer close conn ///TODO: 半关闭
+		_TRACELOG(logger, "socket_fd:%d close");
 		if (conn->m_recv_len > 0)
 		{
 			process_net_msg(conn);
@@ -250,8 +272,9 @@ L_READ:
 	else
 	{ //error
 		int32_t errcode = GET_SOCK_ERR();
-		if (errcode != EWOULDBLOCK && errcode != EAGAIN && errcode != EINTR)
+		if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 		{
+			_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
 			on_error(conn, errcode);
 			remove_conn(conn);
 		}
@@ -273,19 +296,33 @@ int32_t NetBaseThread::set_sock_nonblock(SOCKET_HANDLE fd)
 	return  ret == 0 ? 0 : GET_SOCK_ERR();
 }
 
+SOCKET_HANDLE NetBaseThread::create_tcp_socket(bool nonblock)
+{
+#ifdef SOCK_NONBLOCK
+	return socket(AF_INET, 
+		nonblock ? SOCK_STREAM|SOCK_NONBLOCK : SOCK_STREAM, 0);
+#else
+	SOCKET_HANDLE fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (nonblock)
+	{
+		int ret = set_sock_nonblock(fd);
+		assert(ret == 0);
+	}
+	return fd;
+#endif
+}
+
 std::pair<int32_t, SOCKET_HANDLE>
 NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
-	thread_pool_id_t client_thread_pool, thread_id_t client_thread)
+	thread_pool_id_t client_thread_pool, thread_id_t client_thread,
+	bool nonblock)
 {
 	int ret = 0;
 	struct sockaddr_in addr = {};
-	SOCKET_HANDLE fd = socket(AF_INET, SOCK_STREAM, 0);
+	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
 	assert(fd != INVALID_SOCKET);
 	if (fd == INVALID_SOCKET)
 		return std::make_pair(GET_SOCK_ERR(), fd);
-
-	ret = set_sock_nonblock(fd);
-	if (ret != 0) goto L_ERR;
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
@@ -311,11 +348,12 @@ L_ERR:
 }
 
 std::pair<int32_t, SOCKET_HANDLE>
-NetBaseThread::create_connect_socket(const char* ip, uint16_t port)
+NetBaseThread::create_connect_socket(const char* ip,
+	uint16_t port, bool nonblock)
 {
 	int ret = 0;
 	struct sockaddr_in addr = {};
-	SOCKET_HANDLE fd = socket(AF_INET, SOCK_STREAM, 0);
+	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
 	assert(fd != INVALID_SOCKET);
 	if (fd == INVALID_SOCKET)
 		return std::make_pair(GET_SOCK_ERR(), fd);
@@ -323,10 +361,14 @@ NetBaseThread::create_connect_socket(const char* ip, uint16_t port)
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
-	if (ret != 1) goto L_ERR; //@return 0 if ip invalid, -1 if error occur
+	if (ret != 1)
+	{ //@return 0 if ip invalid, -1 if error occur
+		ret = GET_SOCK_ERR();
+		goto L_ERR;
+	}
 	for (;;)
 	{
-		int ret = connect(fd,
+		ret = connect(fd,
 			reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
 		if (ret == 0)
 		{
@@ -337,14 +379,14 @@ NetBaseThread::create_connect_socket(const char* ip, uint16_t port)
 		else
 		{
 			ret = GET_SOCK_ERR();
-			if (ret == EWOULDBLOCK/*win*/ || ret == EINPROGRESS/*linux*/)
+			if (ret == WSAEWOULDBLOCK/*win*/ || ret == WSAEINPROGRESS/*linux*/)
 			{
 				NetConnect conn(fd);
 				conn.m_state = NetConnectState::NET_CONN_CONNECTING;
 				add_conn(&conn);
 				return std::make_pair(0, fd);
 			}
-			else if (ret == EINTR/*linux*/)
+			else if (ret == WSAEINTR/*linux*/)
 			{
 				continue;
 			}
@@ -352,7 +394,6 @@ NetBaseThread::create_connect_socket(const char* ip, uint16_t port)
 		}
 	}
 L_ERR:
-	ret = GET_SOCK_ERR();
 	::closesocket(fd);
 	return std::make_pair(ret, fd);
 }
@@ -365,7 +406,7 @@ uint32_t NetBaseThread::on_read_event(NetConnect* conn)
 		return do_recv(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
-		do_accept(conn);
+		return do_accept(conn);
 		break;
 	case NetConnectState::NET_CONN_CONNECTING:
 		//non-blocking connect check write event
@@ -391,17 +432,24 @@ uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
-		return do_send(conn);
+		if (!conn->m_send_list.empty())
+		{
+			return do_send(conn);
+		}
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
 		//ignore
 		break;
 	case NetConnectState::NET_CONN_CONNECTING:
-		do_connect(conn);
+		return do_connect(conn);
 		break;
 	case NetConnectState::NET_CONN_CLOSING:
 	{
-		uint32_t bytes_sent = do_send(conn);
+		uint32_t bytes_sent = 0;
+		if (!conn->m_send_list.empty())
+		{
+			bytes_sent = do_send(conn);
+		}
 		if (conn->m_send_list.empty())
 		{
 			remove_conn(conn);
@@ -555,9 +603,113 @@ void NetBaseThread::run()
 		uint32_t thread_msg_cnt = check_timer_and_thread_msg();
 		if (thread_msg_cnt == 0 && net_msg_cnt == 0)
 		{
-			usleep(1 * 1000);
+			usleep(10 * 1000);
 		}
 	}
+}
+
+void NonblockNetThread::process_msg(ThreadMsg& msg)
+{
+	int ret = 0;
+	switch (msg.m_type)
+	{
+	case NET_ACCEPT_CLIENT_REQ:
+		if (m_conn.m_fd != INVALID_SOCKET)
+		{
+			ret = EINPROGRESS;
+		}
+		else
+		{
+			auto fd = static_cast<SOCKET_HANDLE>(msg.m_ctx.i64);
+			ret = set_sock_nonblock(fd);
+			if ( ret == 0)
+			{ //do not send resp
+				m_conn = NetConnect(fd);
+				return; //NO resp on success
+			}
+		}
+		break;
+	default:
+		ret = EINVAL;
+		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		break;
+	}
+	_DEBUGLOG(logger, "reject client:%llu, result:%d", msg.m_ctx.i64, ret);
+	get_asynframe()->send_resp_msg(NET_ACCEPT_CLIENT_RESP,
+		nullptr, 0, MsgBufferType::STATIC,
+		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
+		MsgContextType::STATIC, msg, this);
+}
+
+void NonblockConnectThread::process_msg(ThreadMsg& msg)
+{
+	int ret = 0;
+	switch (msg.m_type)
+	{
+	case NET_CONNECT_HOST_REQ:
+		if (m_conn.m_fd != INVALID_SOCKET)
+		{
+			ret = EINPROGRESS;
+		}
+		else
+		{
+			char ip[MAX_IP];
+			ret = dns_query(msg.m_buf, ip);
+			if (ret == 0)
+			{
+				const auto& r = create_connect_socket(ip,
+					static_cast<uint16_t>(msg.m_ctx.i64), false);
+				ret = set_sock_nonblock(r.second);
+				assert(ret == 0);
+				ret = r.first;
+			}
+		}
+		break;
+	default:
+		ret = EINVAL;
+		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		break;
+	}
+	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);
+	get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
+		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
+		MsgContextType::STATIC, msg, this);
+	msg.m_buf = nullptr;
+	msg.m_buf_type = MsgBufferType::STATIC;
+}
+
+void NonblockListenThread::process_msg(ThreadMsg& msg)
+{
+	int ret = 0;
+	switch (msg.m_type)
+	{
+	case NET_LISTEN_ADDR_REQ:
+		if (m_conn.m_fd != INVALID_SOCKET)
+		{
+			ret = EINPROGRESS;
+		}
+		else
+		{
+			const auto& r = create_listen_socket(msg.m_buf,
+				static_cast<uint16_t>(msg.m_ctx.i64 >> 32),
+				static_cast<thread_pool_id_t>(msg.m_ctx.i64 >> 16),
+				static_cast<thread_id_t>(msg.m_ctx.i64));
+			ret = r.first;
+		}
+		break;
+	default:
+		ret = EINVAL;
+		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		break;
+	}
+	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);
+	get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
+		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
+		MsgContextType::STATIC, msg, this);
+	msg.m_buf = nullptr;
+	msg.m_buf_type = MsgBufferType::STATIC;
 }
 
 int32_t is_str_ipv4(const char* ipv4str)
@@ -579,54 +731,6 @@ int32_t is_str_ipv4(const char* ipv4str)
 	if (*ipv4str != 0) return 0;
 
 	return 1;
-}
-
-void NonblockNetThread::process_msg(ThreadMsg& msg)
-{
-	switch (msg.m_type)
-	{
-	case NET_ACCEPT_CLIENT_REQ:
-		if (m_conn.m_fd != INVALID_SOCKET)
-		{
-			logger_debug(logger, "busy, reject client:%d", m_conn.m_fd);
-			get_asynframe()->send_resp_msg(NET_ACCEPT_CLIENT_RESP,
-				nullptr, 0, MsgBufferType::STATIC,
-				{static_cast<uint64_t>(EINPROGRESS) << 32| m_conn.m_fd},
-				MsgContextType::STATIC, msg, this);
-		}
-		else
-		{
-			auto fd = static_cast<SOCKET_HANDLE>(msg.m_ctx.i64);
-			if (set_sock_nonblock(fd) == 0)
-			{ //do not send resp
-				m_conn = NetConnect(fd);
-			}
-			else
-			{ //resp
-			}
-		}
-		break;
-	default:
-		logger_warn(logger, "recv error msg:%u", msg.m_type);
-		break;
-	}
-}
-
-int32_t NonblockNetThread::poll()
-{
-	if (m_conn.m_fd != INVALID_SOCKET)
-	{
-		uint32_t bytes_sent = 0;
-		uint32_t bytes_recv = 0;
-		bytes_recv = do_recv(&m_conn);
-		if (!m_conn.m_send_list.empty())
-		{
-			bytes_recv = do_send(&m_conn);
-		}
-		m_ss.sample(bytes_recv, bytes_recv);
-		return bytes_sent + bytes_recv != 0;
-	}
-	else return 0;
 }
 
 } //end of namespace asyncpp

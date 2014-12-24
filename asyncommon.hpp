@@ -87,6 +87,19 @@ if (LOGGER_##logger_level >= logger->m_level)\
 #define logger_error(logger, fmt, ...) _logger_wrapper(logger, ERROR, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
 #define logger_fatal(logger, fmt, ...) _logger_wrapper(logger, FATAL, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
 
+#ifdef _ASYNCPP_DEBUG
+#define _TRACELOG(logger, fmt, ...) logger_trace(logger, fmt , ##__VA_ARGS__)
+#define _DEBUGLOG(logger, fmt, ...) logger_debug(logger, fmt , ##__VA_ARGS__)
+#define _INFOLOG(logger, fmt, ...) logger_info(logger, fmt , ##__VA_ARGS__)
+#else
+#define _TRACELOG(logger, fmt, ...)
+#define _DEBUGLOG(logger, fmt, ...)
+#define _INFOLOG(logger, fmt, ...)
+#endif
+#define _WARNLOG(logger, fmt, ...) logger_warn(logger, fmt , ##__VA_ARGS__)
+#define _ERRORLOG(logger, fmt, ...) logger_error(logger, fmt , ##__VA_ARGS__)
+#define _FATALLOG(logger, fmt, ...) logger_fatal(logger, fmt , ##__VA_ARGS__)
+
 typedef uint16_t thread_id_t;
 typedef uint16_t thread_pool_id_t;
 

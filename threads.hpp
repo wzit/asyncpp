@@ -121,6 +121,7 @@ public:
 				m_timer.pop();
 
 				++cnt;
+				_TRACELOG(logger, "run timerid:%d", timer_id);
 				callback(timer_id, ctx);
 			}
 			else break;
@@ -229,6 +230,15 @@ struct NetConnect
 		if (m_recv_buf != nullptr) free(m_recv_buf);
 		if (m_fd != INVALID_SOCKET) ::closesocket(m_fd);
 	}
+	void destruct()
+	{
+		m_recv_len = 0;
+		if (m_fd != INVALID_SOCKET)
+		{
+			::closesocket(m_fd);
+			m_fd = INVALID_SOCKET;
+		}
+	}
 	NetConnect(const NetConnect&) = delete;
 	NetConnect& operator=(const NetConnect&) = delete;
 	NetConnect(NetConnect&& val)
@@ -321,7 +331,7 @@ enum ReservedThreadMsgType
 	
 	NET_LISTEN_ADDR_REQ,	//msg.m_buf = ip
 							//msg.m_ctx.i64 = port<<32 | client_thread_pool_id<<16 | client_thread_id
-	NET_LISTEN_ADDR_RESP,	// msg.m_buf = ip
+	NET_LISTEN_ADDR_RESP,	//msg.m_buf = ip
 							//msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_ACCEPT_CLIENT_REQ,  //msg.m_ctx.i64 = fd
@@ -358,17 +368,20 @@ public:
 		on_error(conn, GET_SOCK_ERR());
 	}
 protected:
-	void do_accept(NetConnect* conn);
-	void do_connect(NetConnect* conn);
+	uint32_t do_accept(NetConnect* conn);
+	uint32_t do_connect(NetConnect* conn);
 	uint32_t do_send(NetConnect* conn);
 	uint32_t do_recv(NetConnect* conn);
 protected:
 	int32_t set_sock_nonblock(SOCKET_HANDLE fd);
+	SOCKET_HANDLE create_tcp_socket(bool nonblock = true);
 	std::pair<int32_t, SOCKET_HANDLE>
 		create_listen_socket(const char* ip, uint16_t port,
-		thread_pool_id_t client_thread_pool, thread_id_t client_thread);
+			thread_pool_id_t client_thread_pool, thread_id_t client_thread,
+			bool nonblock = true);
 	std::pair<int32_t, SOCKET_HANDLE>
-		create_connect_socket(const char* ip, uint16_t port);
+		create_connect_socket(const char* ip, uint16_t port,
+			bool nonblock = true);
 protected:
 	virtual int32_t frame(NetConnect* conn);
 	/*
@@ -386,6 +399,7 @@ public:
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
 			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
+			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			set_write_event(conn);
 			conn->m_state = NetConnectState::NET_CONN_CLOSING;
 		}
@@ -402,11 +416,16 @@ public:
 	int32_t send(NetConnect* conn, char* msg, int32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		if (conn->m_send_list.empty())
+		assert(conn->m_state == NetConnectState::NET_CONN_CONNECTED);
+		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
-			set_rdwr_event(conn);
+			if (conn->m_send_list.empty())
+			{
+				set_rdwr_event(conn);
+			}
+			return conn->send(msg, msg_len, buf_type);
 		}
-		return conn->send(msg, msg_len, buf_type);
+		else return 0;
 	}
 	virtual int32_t send(uint32_t conn_id, char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
@@ -436,8 +455,29 @@ public:
 
 public:
 	virtual void process_msg(ThreadMsg& msg) override;
-	virtual int32_t poll() override;
-	
+	virtual void process_net_msg(NetConnect* conn) override{}
+	virtual int32_t poll() override
+	{
+		if (m_conn.m_fd != INVALID_SOCKET)
+		{
+			uint32_t bytes_recv = on_read_event(&m_conn);
+			uint32_t bytes_sent = on_write_event(&m_conn);
+			m_ss.sample(bytes_recv, bytes_sent);
+			if (m_conn.m_state == NetConnectState::NET_CONN_CLOSED)
+				m_conn.destruct();
+			return bytes_sent + bytes_recv;
+		}
+		else return 0;
+	}
+
+	virtual int32_t add_conn(NetConnect* conn) override
+	{ ///TODO: check m_conn.m_fd
+		m_conn = std::move(*conn);
+		return 0;
+	}
+	virtual void set_read_event(NetConnect* conn) override{}
+	virtual void set_write_event(NetConnect* conn) override{}
+	virtual void set_rdwr_event(NetConnect* conn) override{}
 	virtual NetConnect* get_conn(uint32_t conn_id) override
 	{
 		return &m_conn;
@@ -447,30 +487,36 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
+			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			on_close(conn);
-			///TODO: 析构，关闭连接
 		}
 		return 0;
 	}
 };
 
-class ConnectThread : public NonblockNetThread
-{
+class NonblockConnectThread : public NonblockNetThread
+{ //自行DNS解析
 public:
-	ConnectThread() = default;
-	~ConnectThread() = default;
-	ConnectThread(const ConnectThread&) = delete;
-	ConnectThread& operator=(const ConnectThread&) = delete;
+	NonblockConnectThread() = default;
+	~NonblockConnectThread() = default;
+	NonblockConnectThread(const NonblockConnectThread&) = delete;
+	NonblockConnectThread& operator=(const NonblockConnectThread&) = delete;
+
+public:
+	virtual void process_msg(ThreadMsg& msg) override;
 };
 
-class ListenThread : public NonblockNetThread
-{
+class NonblockListenThread : public NonblockNetThread
+{ //自行listen
 public:
-	ListenThread() = default;
-	~ListenThread() = default;
-	ListenThread(const ListenThread&) = delete;
-	ListenThread& operator=(const ListenThread&) = delete;
+	NonblockListenThread() = default;
+	~NonblockListenThread() = default;
+	NonblockListenThread(const NonblockListenThread&) = delete;
+	NonblockListenThread& operator=(const NonblockListenThread&) = delete;
+
+public:
+	virtual void process_msg(ThreadMsg& msg) override;
 };
 
 template<typename Selector>
@@ -593,6 +639,7 @@ public:
 	{
 		if (set_sock_nonblock(conn->m_fd) == 0)
 		{
+			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			m_selector.add(conn->m_fd);
 			m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
 			return 0;
@@ -604,6 +651,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
+			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			m_selector.del(conn->m_fd);
 			m_removed_conns.push_back(conn->id());
