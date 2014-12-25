@@ -1,5 +1,6 @@
 ﻿#include "threads.hpp"
 #include "asyncpp.hpp"
+#include "http_utility.h"
 #include <cassert>
 #include <errno.h>
 
@@ -468,65 +469,6 @@ uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 		break;
 	}
 	return 0;
-}
-
-static int32_t http_get_header_len(char* package, uint32_t package_len)
-{
-	char* p = package + 32; //按照规范，http头一般应大于32个字节
-	char* end = package + package_len - 4;
-	for (; p <= end; ++p)
-	{
-		if (p[0] == '\r' && p[1] == '\n' &&
-			p[2] == '\r' && p[3] == '\n')
-		{
-			return p - package + 4;
-		}
-	}
-	return 0;
-}
-
-static char* http_move_to_next_line(char* cur_line, char* package, uint32_t package_len)
-{
-	char* p = cur_line;
-	char* end = package + package_len;// - 1;
-	for (; p<end; ++p)
-	{
-		if (/*p[0]=='\r' && p[1]=='\n'*/ *p == '\n')
-		{
-			++p; //p += 2;
-			return p < end ? p : NULL;
-		}
-	}
-	return NULL;
-}
-
-static int32_t http_get_request_header(char* header, uint32_t header_len,
-									const char* name, uint32_t name_len,
-									char** p_value, uint32_t* p_value_len)
-{
-	char* line = header;
-	char* end = header + header_len;
-	do
-	{
-		if (memcmp(name, line, name_len) == 0)
-		{
-			char* p = line + 1;
-			while (*p != ':')
-			{
-				if (*p == '\r' || p >= end)
-					return ERR_PROTOCOL;
-				++p;
-			}
-			while(isspace((int)(uint8_t)*++p));
-			*p_value = p;
-			while (*p != '\r' && p<end) ++p;
-			*p_value_len = p - *p_value;
-			return 0;
-		}
-		line = http_move_to_next_line(line, header, header_len);
-	} while (line);
-
-	return ERR_NOT_FOUND;
 }
 
 int32_t NetBaseThread::frame(NetConnect* conn)
