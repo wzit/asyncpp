@@ -35,24 +35,6 @@ private:
 
 public:
 	/**
-	 获取URL中的path(http://host:port/path?param_list)
-	 hash_value = time33_hash(path)
-	 仅在parse_url调用成功后有效
-	 */
-	uint32_t get_path_hash_value();
-	const char* get_path();
-
-	/**
-	 获取URL参数，其中哈希值 k = time33_hash(name)
-	 @return 如果该参数不存在，返回NULL。返回结果是C风格字符串。
-	*仅在parse_url调用成功后有效
-	 */
-	char* get_param_by_hash_value(uint32_t k);
-	char* get_param_by_name(const char* name);
-	value_t get_param_len_by_hash_value(uint32_t k);
-	value_t get_param_len_by_name(const char* name);
-
-	/**
 	 原地解析URL中的参数列表，传入的URL将会被改变，需保证URL缓冲区长度至少为 url_len+1
 	 URL的内存将用于随后的get_param调用中，调用者需保证其生命周期足够长
 	 @return 0表示成功
@@ -60,7 +42,21 @@ public:
 	int32_t parse_url_inplace(char* url, uint32_t url_len);
 
 public:
-	/*以下接口当参数不存在时，返回 空字符串、0、false*/
+	/**
+	 获取URL中的path(http://host:port/path?param_list)
+	 hash_value = time33_hash(path)
+	 仅在parse_url调用成功后有效
+	 */
+	uint32_t get_path_hash_value();
+	const char* get_path();
+
+	value_t get_param_by_hash_value(uint32_t k);
+	value_t get_param_by_name(const char* name);
+	/**
+	 获取URL参数，其中哈希值 k = time33_hash(name)
+	 以下接口当参数不存在时，返回 空字符串、0、false
+	 仅在parse_url调用成功后有效
+	 */
 	char* get_cstr_param(const char* name)
 	{
 		return get_cstr_param(time33_hash(name));
@@ -88,11 +84,11 @@ public:
 
 	char* get_cstr_param(uint32_t k)
 	{
-		return get_param_len_by_hash_value(k).first;
+		return get_param_by_hash_value(k).first;
 	}
 	int32_t get_int32_param(uint32_t k)
 	{
-		const auto& v = get_param_len_by_hash_value(k);
+		const auto& v = get_param_by_hash_value(k);
 		if (v.first != nullptr)
 		{
 			return atoi32(v.first);
@@ -101,7 +97,7 @@ public:
 	}
 	int64_t get_int64_param(uint32_t k)
 	{
-		const auto& v = get_param_len_by_hash_value(k);
+		const auto& v = get_param_by_hash_value(k);
 		if (v.first != nullptr)
 		{
 			return atoi64(v.first);
@@ -110,7 +106,7 @@ public:
 	}
 	std::string get_string_param(uint32_t k)
 	{
-		const auto& v = get_param_len_by_hash_value(k);
+		const auto& v = get_param_by_hash_value(k);
 		if (v.first != nullptr)
 		{
 			return std::string(v.first, v.second);
@@ -124,7 +120,7 @@ public:
 	*/
 	std::string get_decoded_string_param(uint32_t k)
 	{
-		const auto& v = get_param_len_by_hash_value(k);
+		const auto& v = get_param_by_hash_value(k);
 		if (v.first != nullptr)
 		{
 			return std::string(v.first, decode_url_inplace(v.first, v.second));
@@ -137,7 +133,7 @@ public:
 	*/
 	bool get_bool_param(uint32_t k)
 	{
-		const auto& v = get_param_len_by_hash_value(k);
+		const auto& v = get_param_by_hash_value(k);
 		if (v.first != nullptr)
 		{
 			return v.first[0] == '1' || v.first[0] == 't';
