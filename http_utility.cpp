@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#pragma warning(disable:4996)
+#endif
+
 /*************************** http query string parser implement ****************************/
 
 void HttpQueryStringParser::insert_param(uint32_t k, char* val, uint32_t val_len)
@@ -24,18 +28,8 @@ const char* HttpQueryStringParser::get_path()
 	return m_path;
 }
 
-char* HttpQueryStringParser::get_param_by_hash_value(const uint32_t k)
-{
-	return get_param_len_by_hash_value(k).first;
-}
-
-char* HttpQueryStringParser::get_param_by_name(const char* name)
-{
-	return get_param_len_by_name(name).first;
-}
-
 HttpQueryStringParser::value_t
-HttpQueryStringParser::get_param_len_by_hash_value(const uint32_t k)
+HttpQueryStringParser::get_param_by_hash_value(const uint32_t k)
 {
 	const auto& it = m_params.find(k);
 	if (it != m_params.end()) return (*it).second;
@@ -43,27 +37,32 @@ HttpQueryStringParser::get_param_len_by_hash_value(const uint32_t k)
 }
 
 HttpQueryStringParser::value_t
-HttpQueryStringParser::get_param_len_by_name(const char* name)
+HttpQueryStringParser::get_param_by_name(const char* name)
 {
-	return get_param_len_by_hash_value(time33_hash(name));
+	return get_param_by_hash_value(time33_hash(name));
 }
 
 int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 {
-	char* p_param;
-	char* p_val = url;
-	char* p_cur = url;
-
 	m_params.clear();
 
 	//cmd
-	url[len] = '?';
-	while(*p_cur!='?'){
-		if(*p_cur=='/')p_val = ++p_cur;
-		else ++p_cur;
+	if (strnicmp(url, "http://", strlen("http://")) == 0)
+	{
+		m_path = url + strlen("http://");
+		while (*m_path != '/')
+		{
+			if (*m_path == 0) return EPROTO;
+			++m_path;
+		}
+		++m_path;
 	}
+	else m_path = url + 1;
+
+	url[len] = '?';
+	char* p_cur = (char*)m_path;
+	while(*p_cur!='?') ++p_cur;
 	*p_cur = 0;
-	m_path = p_val;
 	m_path_hash_value = time33_hash(m_path);
 
 	if (p_cur - url == static_cast<int32_t>(len)) return 0;
@@ -71,7 +70,7 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 	//param
 	url[len] = '&';
 	url[len+1] = 0;
-	p_param = ++p_cur;
+	char* p_param = ++p_cur;
 	while(*p_cur){
 		while(*p_cur!='='){
 			if(*p_cur=='&')
@@ -79,7 +78,7 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 			++p_cur;
 		}
 		*p_cur = 0;
-		p_val = ++p_cur;
+		char* p_val = ++p_cur;
 		while(*p_cur!='&')++p_cur;
 		*p_cur = 0;
 		insert_param(time33_hash(p_param), p_val, p_cur-p_val);
