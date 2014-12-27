@@ -29,6 +29,7 @@ class BaseThread
 protected:
 	FixedSizeCircleQueue<ThreadMsg, 128> m_msg_queue;
 	pqueue<TimerMsg> m_timer;
+	std::unordered_map<uint64_t, MsgContext*> m_ctxs;
 	enum {MSG_CACHE_SIZE = 16};
 	ThreadMsg m_msg_cache[MSG_CACHE_SIZE];
 	ThreadPool* m_master;
@@ -38,6 +39,7 @@ public:
 	BaseThread()
 		: m_msg_queue()
 		, m_timer()
+		, m_ctxs()
 		, m_msg_cache()
 		, m_master(nullptr)
 		, m_id(0)
@@ -47,13 +49,17 @@ public:
 	BaseThread(ThreadPool* threadpool)
 		: m_msg_queue()
 		, m_timer()
+		, m_ctxs()
 		, m_msg_cache()
 		, m_master(threadpool)
 		, m_id(0)
 		, m_state(ThreadState::INIT)
 	{
 	}
-	virtual ~BaseThread(){}
+	virtual ~BaseThread()
+	{
+		for (auto& it : m_ctxs)delete it.second;
+	}
 	BaseThread(const BaseThread&) = delete;
 	BaseThread& operator=(const BaseThread&) = delete;
 public:
@@ -83,6 +89,7 @@ public:
 		return m_msg_queue.size();
 	}
 
+public:
 	uint32_t add_timer(time_t wait_time, timer_func_t callback, uint64_t ctx)
 	{
 		return m_timer.push(TimerMsg(callback, g_unix_timestamp + wait_time, ctx));
@@ -127,6 +134,22 @@ public:
 			else break;
 		}
 		return cnt;
+	}
+
+public:
+	void add_thread_ctx(uint64_t seq, MsgContext* ctx)
+	{
+		m_ctxs.insert(std::make_pair(seq, ctx));
+	}
+	void del_thread_ctx(uint64_t seq)
+	{
+		m_ctxs.erase(seq);
+	}
+	MsgContext* get_thread_ctx(uint64_t seq)
+	{
+		const auto& it = m_ctxs.find(seq);
+		if (it != m_ctxs.end()) return it->second;
+		else return nullptr;
 	}
 };
 

@@ -32,6 +32,7 @@ AsyncFrame::AsyncFrame()
 AsyncFrame::~AsyncFrame()
 {
 	for (auto t : m_thread_pools)delete t;
+	for (auto& it : m_ctxs)delete it.second;
 }
 
 static void thread_main(BaseThread* t)
