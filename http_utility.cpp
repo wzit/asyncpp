@@ -70,6 +70,7 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 	//param
 	url[len] = '&';
 	url[len+1] = 0;
+	char* p_val;
 	char* p_param = ++p_cur;
 	while(*p_cur){
 		while(*p_cur!='='){
@@ -78,7 +79,7 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 			++p_cur;
 		}
 		*p_cur = 0;
-		char* p_val = ++p_cur;
+		p_val = ++p_cur;
 		while(*p_cur!='&')++p_cur;
 		*p_cur = 0;
 		insert_param(time33_hash(p_param), p_val, p_cur-p_val);
