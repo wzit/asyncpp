@@ -10,6 +10,8 @@ class AsyncFrame
 {
 private:
 	std::vector<ThreadPool*> m_thread_pools;
+	std::unordered_map<uint64_t, MsgContext*> m_ctxs;
+	std::mutex m_ctxs_mtx;
 #ifdef _WIN32
 public:
 	static HANDLE m_iocp;
@@ -267,6 +269,25 @@ public:
 	void start_thread(BaseThread* t);
 	void start_thread(thread_pool_id_t t_pool_id, thread_id_t t_id);
 	void start(); //block
+
+public:
+	void add_thread_ctx(uint64_t seq, MsgContext* ctx)
+	{
+		std::lock_guard<std::mutex> _lock(m_ctxs_mtx);
+		m_ctxs.insert(std::make_pair(seq, ctx));
+	}
+	MsgContext* del_thread_ctx(uint64_t seq)
+	{
+		std::lock_guard<std::mutex> _lock(m_ctxs_mtx);
+		const auto& it = m_ctxs.find(seq);
+		if (it != m_ctxs.end())
+		{
+			MsgContext* p = it->second;
+			m_ctxs.erase(it);
+			return p;
+		}
+		else return nullptr;
+	}
 };
 
 } //end of namespace asyncpp

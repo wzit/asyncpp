@@ -44,6 +44,13 @@ public:
 public:
 	char* get_string(){ return m_buf; }
 	uint32_t get_length(){ return m_json_len; }
+	void reserve(uint32_t n)
+	{
+		if (n > m_buf_len)
+		{
+			enlarge_buffer(n);
+		}
+	}
 	void attach_buffer(char* buffer, uint32_t buffer_size)
 	{
 		m_buf = buffer;
@@ -79,6 +86,7 @@ public:
 	}
 
 	void object_begin();
+	void object_begin(const char* name);
 	void object_add_string(const char* name, const char* s, uint32_t len);
 	void object_add_int32(const char* name, int32_t n);
 	void object_add_uint32(const char* name, uint32_t n);
@@ -88,6 +96,7 @@ public:
 	void object_end();
 
 	void array_begin();
+	void array_begin(const char* name);
 	void array_add_string(const char* s, uint32_t len);
 	void array_add_int32(int32_t n);
 	void array_add_uint32(uint32_t n);

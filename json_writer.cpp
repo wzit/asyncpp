@@ -240,6 +240,12 @@ void JOWriter::object_begin()
 	push_back('{');
 }
 
+void JOWriter::object_begin(const char* name)
+{
+	object_add_name(name, strlen(name));
+	object_begin();
+}
+
 void JOWriter::object_add_string(const char* name, const char* s, uint32_t len)
 {
 	object_add_name(name, strlen(name));
@@ -302,6 +308,12 @@ void JOWriter::array_begin()
 		push_back(',');
 	}
 	push_back('[');
+}
+
+void JOWriter::array_begin(const char* name)
+{
+	object_add_name(name, strlen(name));
+	array_begin();
 }
 
 void JOWriter::array_add_string(const char* s, uint32_t len)
