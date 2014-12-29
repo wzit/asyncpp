@@ -594,7 +594,7 @@ const JO& JO::operator[](int32_t idx) const
 	return (*m_array_elements)[idx];
 }
 
-#if 1
+#if 0
 int main()
 {
 	char s[100] = "{\"a\\x20b\":\"123\\u6211abc\\/\x0d\x0avwx\",'b':[1,2,3,{'ba':'aa','ba':'bb'}],'c':123.12}";
