@@ -1,1 +1,159 @@
 ﻿#include "cfg.hpp"
+#include "string_utility.h"
+#include <assert.h>
+
+
+CFG::section_t& CFG::operator[](const char* section_name)
+{
+	auto it = sections.find(section_name);
+	if (it != sections.end()) return it->second;
+	else
+	{
+		auto r = sections.insert(std::make_pair(section_name, section_t()));
+		assert(r.second);
+		return r.first->second;
+	}
+}
+
+const std::string& CFG::get(const char* section, const char* key) const
+{
+	auto it = sections.find(section);
+	if (it != sections.end())
+	{
+		auto v = it->second.find(key);
+		if (v != it->second.end())
+			return v->second;
+	}
+	return std::move(std::string(""));
+}
+
+void CFG::set(const char* section, const char* key, const char* val)
+{
+	operator[](section)[key] = val;
+}
+
+int32_t CFG::getInt32(const char* section, const char* key) const
+{
+	return atoi32(get(section, key).c_str());
+}
+
+void CFG::setInt32(const char* section, const char* key, int32_t v)
+{
+	char buf[32];
+	i32toa(v, buf);
+	set(section, key, buf);
+}
+
+int64_t CFG::getInt64(const char* section, const char* key) const
+{
+	return atoi64(get(section, key).c_str());
+}
+void CFG::setInt64(const char* section, const char* key, int64_t v)
+{
+	char buf[32];
+	i64toa(v, buf);
+	set(section, key, buf);
+}
+
+int32_t CFG::flush()
+{
+	return 0;
+}
+
+int32_t CFG::read(const char* cfg_file)
+{
+	int32_t ret = 0;
+	char line[4100];
+	FILE* f = fopen(cfg_file, "r");
+	if (f == nullptr)
+	{
+		printf("load cfg, open %s fail:%d[%s]\n", cfg_file, errno, strerror(errno));
+		return errno;
+	}
+
+	cfg_path = cfg_file;
+
+	for (;;)
+	{
+		char* pline = fgets(line, 4096, f);
+		if (pline == nullptr)
+		{
+			if (feof(f)) return 0;
+			else return EINVAL;
+		}
+		skip_space(pline);
+		int n = strlen(pline);
+		if (n == 0) continue;
+		while (isspace(pline[--n]));
+		pline[n + 1] = 0;
+
+		if (pline[0] == ';' || pline[0] == '#') continue;
+		if (pline[0] != '[')
+		{
+			printf("expect '[', ignore invalid line:%s", line);
+			continue;
+		}
+		char* pe = strchr(pline + 1, ']');
+		if (pe == nullptr)
+		{
+			printf("expect ']', ignore invalid line:%s", line);
+			continue;
+		}
+		std::string section_name(pline + 1, pe);
+		sections.insert(std::make_pair(section_name, section_t()));
+		ret = read_next_section(sections[section_name], line, f);
+	}
+
+	fclose(f);
+	return ret;
+}
+
+int32_t CFG::read_next_section(section_t& section, char* line, FILE* f)
+{
+	for (;;)
+	{
+		char* pline = fgets(line, 4096, f);
+		if (pline == nullptr)
+		{
+			if (feof(f)) return 0;
+			else return EINVAL;
+		}
+		skip_space(pline);
+		int n = strlen(pline);
+		if (n == 0) continue;
+		while (isspace(pline[--n]));
+		pline[n + 1] = 0;
+
+		if (pline[0] == ';' || pline[0] == '#') continue;
+		if (pline[0] == '[')
+		{
+			char* pe = strchr(pline + 1, ']');
+			if (pe == nullptr)
+			{
+				printf("expect ']', ignore invalid line:%s", line);
+				continue;
+			}
+			std::string section_name(pline + 1, pe);
+			sections.insert(std::make_pair(section_name, section_t()));
+			return read_next_section(sections[section_name], line, f);
+		}
+		else
+		{
+			char* pv = strchr(pline, '=');
+			if (pv == nullptr)
+			{
+				printf("expect '=', ignore invalid line:%s", line);
+				continue;
+			}
+			char* pe = pv - 1;
+			while (isspace(*pe)) --pe;
+			while (isspace(*++pv));
+			auto r = section.insert(std::make_pair(std::string(pline, pe + 1), pv));
+			if (!r.second)
+			{
+				printf("ignore duplicate key:%s", line);
+			}
+		}
+	}
+	return 0;
+}

@@ -70,7 +70,7 @@ public:
 	/**
 	向全局线程global_net_thread_id添加一个监听端口
 	连接上来的client将交由client_thread_pool_id线程组的client_thread_id线程处理
-	client_thread_id=-1表示自动选择client_thread_pool_id中的某个线程处理
+	client_thread_id=INVALID_THREAD_ID表示自动选择client_thread_pool_id中的某个线程处理
 	@return true表示请求发送成功
 	*/
 	bool add_listener(const char* ip, uint16_t port,
@@ -115,8 +115,8 @@ public:
 	
 	/**
 	向net_thread_pool_id线程组的net_thread_id线程添加一个网络连接
-	net_thread_pool_id=-1表示向global_net_thread_id添加一个网络连接
-	net_thread_id=-1表示自动选择
+	net_thread_pool_id=0表示向global_net_thread_id添加一个网络连接
+	net_thread_id=INVALID_THREAD_ID表示自动选择
 	@return true表示请求发送成功
 	        失败原因：xxx_id不合法，目标线程消息队列满
 	*/

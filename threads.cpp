@@ -175,6 +175,7 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 	if (sockerr == 0)
 	{ //connect success
 		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
+		on_connect(conn);
 		return 1;
 	}
 	return 0;
