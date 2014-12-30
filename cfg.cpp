@@ -39,7 +39,7 @@ int32_t CFG::getInt32(const char* section, const char* key) const
 
 void CFG::setInt32(const char* section, const char* key, int32_t v)
 {
-	char buf[32];
+	char buf[16];
 	i32toa(v, buf);
 	set(section, key, buf);
 }
@@ -57,6 +57,22 @@ void CFG::setInt64(const char* section, const char* key, int64_t v)
 
 int32_t CFG::flush()
 {
+	FILE* f = fopen(cfg_path.c_str(), "w");
+	if (f == nullptr)
+	{
+		printf("flush to file open %s fail%d[%s]\n", cfg_path.c_str(), errno, strerror(errno));
+		return errno;
+	}
+
+	for (auto section : sections)
+	{
+		fprintf(f, "[%s]\r\n", section.first.c_str());
+		for (auto item : section.second)
+		{
+			fprintf(f, "%s=%s\r\n", item.first.c_str(), item.second.c_str());
+		}
+	}
+	fclose(f);
 	return 0;
 }
 
@@ -64,6 +80,7 @@ int32_t CFG::read(const char* cfg_file)
 {
 	int32_t ret = 0;
 	char line[4100];
+	cfg_path = cfg_file;
 	FILE* f = fopen(cfg_file, "r");
 	if (f == nullptr)
 	{
@@ -71,15 +88,17 @@ int32_t CFG::read(const char* cfg_file)
 		return errno;
 	}
 
-	cfg_path = cfg_file;
-
 	for (;;)
 	{
 		char* pline = fgets(line, 4096, f);
 		if (pline == nullptr)
 		{
-			if (feof(f)) return 0;
-			else return EINVAL;
+			if (feof(f)) break;
+			else
+			{
+				fclose(f);
+				return EINVAL;
+			}
 		}
 		skip_space(pline);
 		int n = strlen(pline);
@@ -155,5 +174,4 @@ int32_t CFG::read_next_section(section_t& section, char* line, FILE* f)
 			}
 		}
 	}
-	return 0;
 }

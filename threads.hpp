@@ -5,6 +5,7 @@
 #include "pqueue.hpp"
 #include "syncqueue.hpp"
 #include "selector.hpp"
+#include "byteorder.h"
 #include <vector>
 #include <queue>
 #include <tuple>
@@ -315,8 +316,28 @@ struct NetConnect
 		}
 		else return EAGAIN;
 	}
-	int32_t get_addr(){ return 0; }
-	int32_t get_peer_addr(){ return 0; }
+	std::pair<std::string&&, uint16_t> get_addr()
+	{
+		char ip[MAX_IP] = {};
+		struct sockaddr_in addr;
+		socklen_t len = sizeof addr;
+		int ret = getsockname(m_fd,
+			reinterpret_cast<struct sockaddr*>(&addr), &len);
+		if (ret != 0) return {std::move(std::string()), 0};
+		inet_ntop(addr.sin_family, reinterpret_cast<void*>(&addr), ip, MAX_IP);
+		return {std::move(std::string(ip)), be16toh(addr.sin_port)};
+	}
+	std::pair<std::string&&, uint16_t> get_peer_addr()
+	{
+		char ip[MAX_IP] = {};
+		struct sockaddr_in addr;
+		socklen_t len = sizeof addr;
+		int ret = getpeername(m_fd,
+			reinterpret_cast<struct sockaddr*>(&addr), &len);
+		if (ret != 0) return {std::move(std::string()), 0};
+		inet_ntop(addr.sin_family, reinterpret_cast<void*>(&addr), ip, MAX_IP);
+		return {std::move(std::string(ip)), be16toh(addr.sin_port)};
+	}
 };
 
 struct net_conn_hash
