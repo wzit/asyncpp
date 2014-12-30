@@ -308,8 +308,12 @@ struct NetConnect
 	int32_t send(char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		m_send_list.push({msg, msg_len, 0, buf_type});
-		return 0;
+		if (m_send_list.size() < 64)
+		{
+			m_send_list.push({ msg, msg_len, 0, buf_type });
+			return 0;
+		}
+		else return EAGAIN;
 	}
 	int32_t get_addr(){ return 0; }
 	int32_t get_peer_addr(){ return 0; }
@@ -414,6 +418,7 @@ protected:
 	 */
 	virtual int32_t on_accept(SOCKET_HANDLE fd){ return 0; }
 	virtual void on_close(NetConnect* conn){}
+	virtual void on_connect(NetConnect* conn){}
 	virtual void on_error(NetConnect* conn, int32_t errcode){}
 public:
 	virtual int32_t poll() = 0;
@@ -439,8 +444,8 @@ public:
 	int32_t send(NetConnect* conn, char* msg, int32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		assert(conn->m_state == NetConnectState::NET_CONN_CONNECTED);
-		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
+		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED
+			|| conn->m_state == NetConnectState::NET_CONN_CONNECTING)
 		{
 			if (conn->m_send_list.empty())
 			{
@@ -448,7 +453,11 @@ public:
 			}
 			return conn->send(msg, msg_len, buf_type);
 		}
-		else return 0;
+		else
+		{
+			assert(0);
+			return 0;
+		}
 	}
 	virtual int32_t send(uint32_t conn_id, char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
