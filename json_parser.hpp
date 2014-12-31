@@ -19,35 +19,18 @@ enum class jo_type_t
 	string
 };
 
-struct CstrHashFunc
-{
-	size_t operator()(const char* s) const
-	{
-		return time33_hash(s);
-	}
-	size_t operator()(const char* s1, const char* s2) const
-	{
-		return strcmp(s1, s2) == 0;
-	}
-};
-
 class JO
 {
-private:
-#ifndef __GNUC__
-	typedef std::unordered_multimap<const char*, JO, CstrHashFunc, CstrHashFunc> map_t;
-	//typedef std::unordered_multimap<std::string, JO> map_t;
-	typedef map_t::iterator iterator;
-#endif
+public:
 	union u_jo_data
 	{
 		char* value;
 		void* object_members;
 		std::vector<JO>* array_elements;
 	}m_jo_data;
-#define m_object_members reinterpret_cast<map_t*>(m_jo_data.object_members)
+#define m_object_members reinterpret_cast<jo_map_t*>(m_jo_data.object_members)
 #define m_array_elements m_jo_data.array_elements
-#define m_value m_jo_data.value
+#define m_jo_value m_jo_data.value
 	jo_type_t m_type;
 
 public:
@@ -74,12 +57,6 @@ public:
 	uint32_t size() const;
 
 	const JO& operator[](const char* key) const;
-#ifndef __GNUC__
-	iterator&& begin() const;
-	iterator&& end() const;
-	iterator&& find(const char* key) const;
-#endif
-
 	const JO& operator[](int32_t idx) const;
 
 private:
@@ -95,5 +72,24 @@ private:
 private:
 	void set_type(jo_type_t type);
 };
+
+struct CstrHashFunc
+{
+	size_t operator()(const char* s) const
+	{
+		return time33_hash(s);
+	}
+	size_t operator()(const char* s1, const char* s2) const
+	{
+		return strcmp(s1, s2) == 0;
+	}
+};
+
+typedef std::unordered_multimap<const char*, JO, CstrHashFunc, CstrHashFunc> jo_map_t;
+//typedef std::unordered_multimap<std::string, JO> jo_map_t;
+
+jo_map_t::const_iterator jo_begin(const JO& jo);
+jo_map_t::const_iterator jo_end(const JO& jo);
+jo_map_t::const_iterator jo_find(const JO& jo, const char* key);
 
 #endif

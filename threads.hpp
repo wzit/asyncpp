@@ -354,27 +354,29 @@ struct NetConnect
 		}
 		else return EAGAIN;
 	}
-	std::pair<std::string&&, uint16_t> get_addr()
+	std::pair<std::string, uint16_t> get_addr()
 	{
 		char ip[MAX_IP] = {};
 		struct sockaddr_in addr;
 		socklen_t len = sizeof addr;
 		int ret = getsockname(m_fd,
 			reinterpret_cast<struct sockaddr*>(&addr), &len);
-		if (ret != 0) return {std::move(std::string()), 0};
-		inet_ntop(addr.sin_family, reinterpret_cast<void*>(&addr), ip, MAX_IP);
-		return {std::move(std::string(ip)), be16toh(addr.sin_port)};
+		if (ret != 0) return {std::string(), 0};
+		inet_ntop(addr.sin_family,
+			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
+		return {std::string(ip), be16toh(addr.sin_port)};
 	}
-	std::pair<std::string&&, uint16_t> get_peer_addr()
+	std::pair<std::string, uint16_t> get_peer_addr()
 	{
 		char ip[MAX_IP] = {};
 		struct sockaddr_in addr;
 		socklen_t len = sizeof addr;
 		int ret = getpeername(m_fd,
 			reinterpret_cast<struct sockaddr*>(&addr), &len);
-		if (ret != 0) return {std::move(std::string()), 0};
-		inet_ntop(addr.sin_family, reinterpret_cast<void*>(&addr), ip, MAX_IP);
-		return {std::move(std::string(ip)), be16toh(addr.sin_port)};
+		if (ret != 0) return {std::string(), 0};
+		inet_ntop(addr.sin_family,
+			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
+		return {std::string(ip), be16toh(addr.sin_port)};
 	}
 };
 

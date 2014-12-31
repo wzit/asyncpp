@@ -5,12 +5,6 @@
 #include "json_parser.hpp"
 #include <assert.h>
 
-#ifdef __GNUC__
-typedef std::unordered_multimap<const char*, JO, CstrHashFunc, CstrHashFunc> map_t;
-//typedef std::unordered_multimap<std::string, JO> map_t;
-typedef map_t::iterator iterator;
-#endif
-
 JO::JO()
 	: m_jo_data({nullptr})
 	, m_type(jo_type_t::null)
@@ -215,7 +209,7 @@ int32_t JO::parse_value_string(char** p_cursor, uint32_t remain_len, char quote)
 	if (remain_len > MAX_JSON_LEN) return -1;
 
 	set_type(jo_type_t::string);
-	m_value = s;
+	m_jo_value = s;
 
 	return parse_string(&s, p_cursor, remain_len, quote);
 }
@@ -225,7 +219,7 @@ int32_t JO::parse_value_bool(char** p_cursor, uint32_t remain_len)
 	//skip_space(*p_cursor);
 
 	set_type(jo_type_t::boolean);
-	m_value = *p_cursor;
+	m_jo_value = *p_cursor;
 	if (memcmp(*p_cursor, "true", 4) == 0)
 	{
 		*p_cursor += 4;
@@ -243,7 +237,7 @@ int32_t JO::parse_value_number(char** p_cursor, uint32_t remain_len)
 	//if (remain_len > MAX_JSON_LEN) return -1;
 
 	set_type(jo_type_t::number);
-	m_value = *p_cursor;
+	m_jo_value = *p_cursor;
 	strtod(*p_cursor, p_cursor); //暂不将数字结尾置0
 	return 0;
 }
@@ -263,7 +257,7 @@ void JO::set_type(jo_type_t type)
 		break;
 	case jo_type_t::object:
 		m_type = type;
-		m_jo_data.object_members = reinterpret_cast<void*>(new map_t);
+		m_jo_data.object_members = reinterpret_cast<void*>(new jo_map_t);
 		break;
 	case jo_type_t::array:
 		m_type = type;
@@ -499,11 +493,11 @@ int32_t JO::i32() const
 {
 	if (m_type == jo_type_t::number || m_type == jo_type_t::string)
 	{
-		return atoi(m_value);
+		return atoi(m_jo_value);
 	}
 	else if (m_type == jo_type_t::boolean)
 	{
-		return *m_value == 't' ? 1 : 0;
+		return *m_jo_value == 't' ? 1 : 0;
 	}
 	else return 0;
 }
@@ -512,11 +506,11 @@ int64_t JO::i64() const
 {
 	if (m_type == jo_type_t::number || m_type == jo_type_t::string)
 	{
-		return atoll(m_value);
+		return atoll(m_jo_value);
 	}
 	else if (m_type == jo_type_t::boolean)
 	{
-		return *m_value == 't' ? 1 : 0;
+		return *m_jo_value == 't' ? 1 : 0;
 	}
 	else return 0;
 }
@@ -525,11 +519,11 @@ double JO::dbl() const
 {
 	if (m_type == jo_type_t::number || m_type == jo_type_t::string)
 	{
-		return atof(m_value);
+		return atof(m_jo_value);
 	}
 	else if (m_type == jo_type_t::boolean)
 	{
-		return *m_value == 't' ? 1 : 0;
+		return *m_jo_value == 't' ? 1 : 0;
 	}
 	else return 0;
 }
@@ -538,7 +532,7 @@ char* JO::str() const
 {
 	if (m_type == jo_type_t::string )
 	{
-		return m_value;
+		return m_jo_value;
 	}
 	else return NULL;
 }
@@ -549,20 +543,18 @@ const JO& JO::operator[](const char* key) const
 	return m_object_members->find(key)->second;
 }
 
-#ifndef __GNUC__
-JO::iterator&& JO::find(const char* key) const
+jo_map_t::const_iterator jo_find(const JO& jo, const char* key)
 {
-	return std::move(m_object_members->find(key));
+	return reinterpret_cast<const jo_map_t*>(jo.m_jo_data.object_members)->find(key);
 }
-JO::iterator&& JO::begin() const
+jo_map_t::const_iterator jo_begin(const JO& jo)
 {
-	return std::move(m_object_members->begin());
+	return reinterpret_cast<const jo_map_t*>(jo.m_jo_data.object_members)->begin();
 }
-JO::iterator&& JO::end() const
+jo_map_t::const_iterator jo_end(const JO& jo)
 {
-	return std::move(m_object_members->end());
+	return reinterpret_cast<const jo_map_t*>(jo.m_jo_data.object_members)->end();
 }
-#endif
 
 uint32_t JO::size() const
 {
@@ -627,7 +619,7 @@ int main()
 	printf("ba : %s\n", b3["ba"].str());
 	printf("c : %f\n", jo["c"].dbl());
 
-	auto& it = b3.find("ba");
+	auto it = jo_find(b3, "ba");
 	printf("ba : %s\n", it->second.str());
 	it++;
 	printf("ba : %s\n", it->second.str());
