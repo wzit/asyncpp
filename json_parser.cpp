@@ -550,17 +550,17 @@ const JO& JO::operator[](const char* key) const
 }
 
 #ifndef __GNUC__
-JO::iterator&& JO::find(const char* key) const
+JO::iterator JO::find(const char* key) const
 {
-	return std::move(m_object_members->find(key));
+	return m_object_members->find(key);
 }
-JO::iterator&& JO::begin() const
+JO::iterator JO::begin() const
 {
-	return std::move(m_object_members->begin());
+	return m_object_members->begin();
 }
-JO::iterator&& JO::end() const
+JO::iterator JO::end() const
 {
-	return std::move(m_object_members->end());
+	return m_object_members->end();
 }
 #endif
 

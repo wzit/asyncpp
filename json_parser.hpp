@@ -75,9 +75,9 @@ public:
 
 	const JO& operator[](const char* key) const;
 #ifndef __GNUC__
-	iterator&& begin() const;
-	iterator&& end() const;
-	iterator&& find(const char* key) const;
+	iterator begin() const;
+	iterator end() const;
+	iterator find(const char* key) const;
 #endif
 
 	const JO& operator[](int32_t idx) const;
