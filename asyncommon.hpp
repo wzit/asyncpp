@@ -202,17 +202,17 @@ typedef void(*timer_func_t)(uint32_t timer_id, uint64_t ctx);
 
 struct TimerMsg
 {
-	timer_func_t m_callback;
 	time_t m_expire_time;
 	uint64_t m_ctx;
+	uint32_t m_type;
 
 	TimerMsg() = default;
 	TimerMsg(const TimerMsg& val) = default;
 	TimerMsg& operator=(const TimerMsg& val) = default;
 	~TimerMsg() = default;
 
-	TimerMsg(timer_func_t callback, time_t expire_time, uint64_t ctx)
-		: m_callback(callback), m_expire_time(expire_time), m_ctx(ctx)
+	TimerMsg(time_t expire_time, uint64_t ctx, uint32_t type)
+		: m_expire_time(expire_time), m_ctx(ctx), m_type(type)
 	{
 	}
 

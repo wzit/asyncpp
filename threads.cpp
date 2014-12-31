@@ -118,7 +118,10 @@ void DnsThread::process_msg(ThreadMsg& msg)
 	}
 		break;
 	default:
-		_WARNLOG(logger, "dns thread recv error msg type:%u", msg.m_type);
+		_WARNLOG(logger, "dns thread recv error msg type:%u,"
+			" from %hu:%hu, to %hu:%hu", msg.m_type,
+			msg.m_src_thread_pool_id, msg.m_src_thread_id,
+			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
 		break;
 	}
 }
@@ -574,7 +577,11 @@ void NonblockNetThread::process_msg(ThreadMsg& msg)
 		break;
 	default:
 		ret = EINVAL;
-		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		_WARNLOG(logger, "recv error msg:%u,"
+			" from %hu:%hu, to %hu:%hu", msg.m_type,
+			msg.m_src_thread_pool_id, msg.m_src_thread_id,
+			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
+		return;
 		break;
 	}
 	_DEBUGLOG(logger, "reject client:%llu, result:%d", msg.m_ctx.i64, ret);
@@ -601,8 +608,7 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 			if (ret == 0)
 			{
 				const auto& r = create_connect_socket(ip,
-					static_cast<uint16_t>(msg.m_ctx.i64), false);
-				ret = set_sock_nonblock(r.second);
+					static_cast<uint16_t>(msg.m_ctx.i64));
 				assert(ret == 0);
 				ret = r.first;
 			}
@@ -610,7 +616,11 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 		break;
 	default:
 		ret = EINVAL;
-		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		_WARNLOG(logger, "recv error msg:%u,"
+			" from %hu:%hu, to %hu:%hu", msg.m_type,
+			msg.m_src_thread_pool_id, msg.m_src_thread_id,
+			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
+		return;
 		break;
 	}
 	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);
@@ -641,9 +651,20 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 			ret = r.first;
 		}
 		break;
+	case NET_ACCEPT_CLIENT_RESP:
+		_WARNLOG(logger, "recv accept client resp:%#llx,"
+			" from %hu:%hu, to %hu:%hu", msg.m_ctx.i64,
+			msg.m_src_thread_pool_id, msg.m_src_thread_id,
+			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
+		return;
+		break;
 	default:
 		ret = EINVAL;
-		_WARNLOG(logger, "recv error msg:%u", msg.m_type);
+		_WARNLOG(logger, "recv error msg:%u,"
+			" from %hu:%hu, to %hu:%hu", msg.m_type,
+			msg.m_src_thread_pool_id, msg.m_src_thread_id,
+			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
+		return;
 		break;
 	}
 	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);

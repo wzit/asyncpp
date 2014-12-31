@@ -68,7 +68,15 @@ public:
 	ThreadState get_state() { return m_state; }
 	
 	uint32_t check_timer_and_thread_msg();
+
+	/*
+	 重写这个函数以改变线程行为
+	*/
 	virtual void run();
+
+	/*
+	 重写这个函数以处理线程消息
+	*/
 	virtual void process_msg(ThreadMsg& msg){}
 
 	void set_id(thread_id_t id){ m_id = id; }
@@ -80,6 +88,9 @@ public:
 
 	AsyncFrame* get_asynframe() const;
 
+	/*
+	 向自己发送一个线程消息
+	*/
 	bool push_msg(ThreadMsg&& msg)
 	{
 		return m_msg_queue.push(std::move(msg));
@@ -91,14 +102,32 @@ public:
 	}
 
 public:
-	uint32_t add_timer(time_t wait_time, timer_func_t callback, uint64_t ctx)
+	/*
+	 重写这个函数以处理定时器消息
+	*/
+	virtual void on_timer(uint32_t timerid, uint32_t type, uint64_t ctx){}
+
+	/*
+	 添加一个定时器
+	 @param wait_time， 多少秒后定时器触发，可以为0(稍后触发)
+	*/
+	uint32_t add_timer(time_t wait_time, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(callback, g_unix_timestamp + wait_time, ctx));
+		return m_timer.push(TimerMsg(g_unix_timestamp + wait_time, ctx, type));
 	}
-	uint32_t add_timer_abs(time_t expire_time, timer_func_t callback, uint64_t ctx)
+
+	/*
+	 使用绝对时间添加一个定时器
+	 @param expire_time， unix_epoch，可以为早于当前时间(稍后触发)
+	*/
+	uint32_t add_timer_abs(time_t expire_time, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(callback, expire_time, ctx));
+		return m_timer.push(TimerMsg(expire_time, ctx, type));
 	}
+
+	/*
+	 删除一个定时器
+	*/
 	void del_timer(uint32_t timer_id)
 	{
 		if (m_timer.is_index_valid(timer_id))
@@ -106,6 +135,10 @@ public:
 			m_timer.remove(timer_id);
 		}
 	}
+
+	/*
+	 修改定时器时间
+	*/
 	void change_timer(uint32_t timer_id, time_t expire_time)
 	{
 		if (m_timer.is_index_valid(timer_id))
@@ -114,6 +147,11 @@ public:
 			m_timer.change_priority(timer_id);
 		}
 	}
+
+	/*
+	 检查定时器是否到时间
+	 一般情况下请不要调用此接口
+	*/
 	uint32_t timer_check()
 	{
 		uint32_t cnt = 0;
@@ -123,14 +161,14 @@ public:
 			const TimerMsg& front = m_timer.front();
 			if (front.m_expire_time <= cur)
 			{
-				timer_func_t callback = front.m_callback;
+				uint32_t type = front.m_type;
 				uint64_t ctx = front.m_ctx;
 				int32_t timer_id = m_timer.front_index();
 				m_timer.pop();
 
 				++cnt;
 				_TRACELOG(logger, "run timerid:%d", timer_id);
-				callback(timer_id, ctx);
+				on_timer(timer_id, type, ctx);
 			}
 			else break;
 		}
@@ -409,6 +447,7 @@ public:
 public:
 	virtual void run() override;
 public:
+	/*一般情况下，请勿调用这些函数*/
 	uint32_t on_read_event(NetConnect* conn);
 	uint32_t on_write_event(NetConnect* conn);
 	void on_error_event(NetConnect* conn)
@@ -416,33 +455,67 @@ public:
 		on_error(conn, GET_SOCK_ERR());
 	}
 protected:
+	/*一般情况下，请勿调用这些函数*/
 	uint32_t do_accept(NetConnect* conn);
 	uint32_t do_connect(NetConnect* conn);
 	uint32_t do_send(NetConnect* conn);
 	uint32_t do_recv(NetConnect* conn);
-protected:
 	int32_t set_sock_nonblock(SOCKET_HANDLE fd);
 	SOCKET_HANDLE create_tcp_socket(bool nonblock = true);
-	std::pair<int32_t, SOCKET_HANDLE>
+
+protected:
+	/*
+	 创建一个监听
+	 @return <result, fd>, on success result=0
+	*/
+	virtual std::pair<int32_t, SOCKET_HANDLE>
 		create_listen_socket(const char* ip, uint16_t port,
 			thread_pool_id_t client_thread_pool, thread_id_t client_thread,
 			bool nonblock = true);
-	std::pair<int32_t, SOCKET_HANDLE>
+
+	/*
+	 创建一个连接
+	 @return <result, fd>, on success result=0
+	*/
+	virtual std::pair<int32_t, SOCKET_HANDLE>
 		create_connect_socket(const char* ip, uint16_t port,
 			bool nonblock = true);
 protected:
-	virtual int32_t frame(NetConnect* conn);
 	/*
+	 线程内部接口，获取一个消息的长度
+	 当框架能够满足此消息长度后回调process_net_msg(conn)
+	 @return 预期的消息长度
+	*/
+	virtual int32_t frame(NetConnect* conn);
+
+	/*
+	 accept一个客户端后回调
 	 @return 0 pass
-	         1 reject and conn
+	         1 reject and close client conn
 			 2 reject but do NOT close client conn
 	 */
 	virtual int32_t on_accept(SOCKET_HANDLE fd){ return 0; }
+
+	/*
+	 连接关闭前回调(连接关闭无法被阻止)
+	*/
 	virtual void on_close(NetConnect* conn){}
+
+	/*
+	 连接成功后回调
+	*/
 	virtual void on_connect(NetConnect* conn){}
+
+	/*
+	 连接出错后回调
+	*/
 	virtual void on_error(NetConnect* conn, int32_t errcode){}
+
 public:
-	virtual int32_t poll() = 0;
+	/*
+	 关闭连接
+	 连接将延迟到数据发送或出错后关闭，期间不再接收消息
+	*/
 	virtual void close(NetConnect* conn)
 	{
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
@@ -453,7 +526,15 @@ public:
 			conn->m_state = NetConnectState::NET_CONN_CLOSING;
 		}
 	}
+
+	/*
+	 强制关闭连接
+	*/
 	virtual void force_close(NetConnect* conn){ remove_conn(conn); }
+
+	/*
+	 强制关闭连接，对端将会收到RST
+	*/
 	virtual void reset(NetConnect* conn)
 	{
 		struct linger so_linger = { 1, 0 }; //set linger on and wait 0s (i.e. do NOT wait)
@@ -461,7 +542,17 @@ public:
 			reinterpret_cast<const char*>(&so_linger), sizeof so_linger);
 		remove_conn(conn);
 	}
+
+	/*
+	 获取连接
+	*/
 	virtual NetConnect* get_conn(uint32_t conn_id) = 0;
+
+	/*
+	 发送数据
+	 这些数据将会被排队发送，如果队列满，返回EAGAIN
+	 @return result
+	*/
 	int32_t send(NetConnect* conn, char* msg, int32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
@@ -480,13 +571,30 @@ public:
 			return 0;
 		}
 	}
+
+	/*
+	 发送数据
+	 这些数据将会被排队发送，如果队列满，返回EAGAIN
+	 @return result
+	*/
 	virtual int32_t send(uint32_t conn_id, char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
 		return send(get_conn(conn_id), msg, msg_len, buf_type);
 	}
 public:
+	/*
+	 重写这个函数以处理线程消息
+	*/
 	virtual void process_net_msg(NetConnect* conn) = 0;
+
+	/*
+	 重写这个函数以改变网络事件处理逻辑
+	*/
+	virtual int32_t poll() = 0;
+
+public:
+	/*一般情况下，请勿调用这些函数*/
 	virtual int32_t add_conn(NetConnect* conn) = 0;
 	virtual int32_t remove_conn(NetConnect* conn) = 0;
 	virtual void set_read_event(NetConnect* conn) = 0;
@@ -546,6 +654,22 @@ public:
 		}
 		return 0;
 	}
+
+protected:
+	virtual std::pair<int32_t, SOCKET_HANDLE>
+		create_listen_socket(const char* ip, uint16_t port,
+		thread_pool_id_t client_thread_pool, thread_id_t client_thread,
+		bool nonblock = true) override
+	{
+		return {EINVAL, INVALID_SOCKET};
+	}
+
+	virtual std::pair<int32_t, SOCKET_HANDLE>
+		create_connect_socket(const char* ip, uint16_t port,
+		bool nonblock = true) override
+	{
+		return {EINVAL, INVALID_SOCKET};
+	}
 };
 
 class NonblockConnectThread : public NonblockNetThread
@@ -558,6 +682,19 @@ public:
 
 public:
 	virtual void process_msg(ThreadMsg& msg) override;
+
+protected:
+	virtual std::pair<int32_t, SOCKET_HANDLE>
+		create_connect_socket(const char* ip, uint16_t port,
+		bool nonblock = true) override
+	{
+		const auto& r = NetBaseThread::create_connect_socket(ip, port, false);
+		if (r.first == 0 && nonblock)
+		{
+			set_sock_nonblock(r.second);
+		}
+		return r;
+	}
 };
 
 class NonblockListenThread : public NonblockNetThread
@@ -570,6 +707,16 @@ public:
 
 public:
 	virtual void process_msg(ThreadMsg& msg) override;
+
+protected:
+	virtual std::pair<int32_t, SOCKET_HANDLE>
+		create_listen_socket(const char* ip, uint16_t port,
+		thread_pool_id_t client_thread_pool, thread_id_t client_thread,
+		bool nonblock = true) override
+	{
+		return NetBaseThread::create_listen_socket(ip, port,
+			client_thread_pool, client_thread, nonblock);
+	}
 };
 
 template<typename Selector>

@@ -5,6 +5,12 @@
 #include "json_parser.hpp"
 #include <assert.h>
 
+#ifdef __GNUC__
+typedef std::unordered_multimap<const char*, JO, CstrHashFunc, CstrHashFunc> map_t;
+//typedef std::unordered_multimap<std::string, JO> map_t;
+typedef map_t::iterator iterator;
+#endif
+
 JO::JO()
 	: m_jo_data({nullptr})
 	, m_type(jo_type_t::null)
@@ -257,7 +263,7 @@ void JO::set_type(jo_type_t type)
 		break;
 	case jo_type_t::object:
 		m_type = type;
-		m_object_members = new map_t;
+		m_jo_data.object_members = reinterpret_cast<void*>(new map_t);
 		break;
 	case jo_type_t::array:
 		m_type = type;
@@ -543,18 +549,20 @@ const JO& JO::operator[](const char* key) const
 	return m_object_members->find(key)->second;
 }
 
-JO::iterator JO::find(const char* key) const
+#ifndef __GNUC__
+JO::iterator&& JO::find(const char* key) const
 {
-	return m_object_members->find(key);
+	return std::move(m_object_members->find(key));
 }
-JO::iterator JO::begin() const
+JO::iterator&& JO::begin() const
 {
-	return m_object_members->begin();
+	return std::move(m_object_members->begin());
 }
-JO::iterator JO::end() const
+JO::iterator&& JO::end() const
 {
-	return m_object_members->end();
+	return std::move(m_object_members->end());
 }
+#endif
 
 uint32_t JO::size() const
 {

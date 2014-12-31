@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <string.h>
 
 #ifdef __GNUC__
 
