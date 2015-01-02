@@ -475,6 +475,72 @@ uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 	return 0;
 }
 
+int32_t calc_http_chunked(NetConnect* conn)
+{
+	int32_t chunklen = -1;
+
+	if (conn->m_recv_len < conn->m_header_len + conn->m_body_len)
+		return conn->m_header_len + conn->m_body_len;
+
+	char* end = conn->m_recv_buf + conn->m_recv_len;
+	do
+	{
+		/** pchunk ->
+		1, 1*HEX [chunk-extension] CRLF chunk-body CRLF ....
+		2, CRLF 1*HEX [chunk-extension] CRLF chunk-body CRLF ....
+		3, CRLF 0 CRLF [trailer] CRLF
+		*/
+		char* pchunk = conn->m_recv_buf +
+			conn->m_header_len + conn->m_body_len;
+		char* pchunkbody = pchunk;
+		for (; pchunkbody < end - 1; ++pchunkbody)
+		{ //ignore chunk-extension
+			if (pchunkbody[0] == '\r' && pchunkbody[1] == '\n')
+				break;
+		}
+		if (pchunkbody == end - 1)
+		{
+			return conn->m_recv_len * 2;
+		}
+		else
+		{
+			// pchunkbody -> CRLF
+			// CRLF 1*HEX CRLF
+			// ^          ^
+			chunklen = strtol(pchunk, &pchunkbody, 16);
+			// CRLF 1*HEX CRLF
+			//          ^
+
+			for (; pchunkbody < end - 1; ++pchunkbody)
+			{ //ignore chunk-extension
+				if (pchunkbody[0] == '\r' && pchunkbody[1] == '\n')
+					break;
+			}
+			if (pchunkbody == end - 1)
+			{
+				return conn->m_recv_len * 2;
+			}
+			// CRLF 1*HEX CRLF
+			//            ^
+
+			if (chunklen != 0)
+			{
+				conn->m_body_len += chunklen;
+				pchunkbody += strlen("\r\n");
+				conn->m_recv_len -= pchunkbody - pchunk;
+				memmove(pchunk, pchunkbody, end - pchunkbody);
+			}
+			else
+			{
+				// do NOT support chunk trailer
+				conn->m_recv_len -= pchunkbody - pchunk + strlen("\r\n\r\n");
+			}
+		}
+	} while (conn->m_header_len + conn->m_body_len < conn->m_recv_len);
+
+	return conn->m_header_len + conn->m_body_len;
+}
+
 int32_t NetBaseThread::frame(NetConnect* conn)
 {
 	if (conn->m_header_len == 0)
@@ -515,21 +581,14 @@ int32_t NetBaseThread::frame(NetConnect* conn)
 			&p, &len) == 0)
 		{
 			if (memcmp(p, "chunked", len) == 0)
-			{
+			{ //暂不支持 chunk-extension , trailer
 				if (conn->m_net_msg_type == NetMsgType::HTTP_POST)
 					conn->m_net_msg_type = NetMsgType::HTTP_POST_CHUNKED;
 				else if (conn->m_net_msg_type == NetMsgType::HTTP_RESP)
 					conn->m_net_msg_type = NetMsgType::HTTP_RESP_CHUNKED;
 
-				if (conn->m_recv_len > conn->m_header_len + 4) //4 == strlen("\r\n""\r\n")
-				{
-					char* end;
-					p = conn->m_recv_buf + conn->m_header_len;
-					conn->m_body_len = strtol(p, &end, 16);
-					conn->m_body_len += end - p + 4;
-					return conn->m_header_len + conn->m_body_len;
-				}
-				else return conn->m_recv_len * 2;
+				return calc_http_chunked(conn);
+
 			}
 			else return conn->m_recv_len; //unsupported
 		}
@@ -537,7 +596,10 @@ int32_t NetBaseThread::frame(NetConnect* conn)
 	}
 	else
 	{
-		return conn->m_header_len + conn->m_body_len;
+		if (conn->m_net_msg_type == NetMsgType::HTTP_POST_CHUNKED
+			|| conn->m_net_msg_type == NetMsgType::HTTP_RESP_CHUNKED)
+			return calc_http_chunked(conn);
+		else return conn->m_header_len + conn->m_body_len;
 	}
 }
 
