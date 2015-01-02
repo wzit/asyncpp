@@ -271,12 +271,12 @@ public:
 	void start(); //block
 
 public:
-	void add_thread_ctx(uint64_t seq, MsgContext* ctx)
+	void add_ctx(uint64_t seq, MsgContext* ctx)
 	{
 		std::lock_guard<std::mutex> _lock(m_ctxs_mtx);
 		m_ctxs.insert(std::make_pair(seq, ctx));
 	}
-	MsgContext* del_thread_ctx(uint64_t seq)
+	MsgContext* del_ctx(uint64_t seq)
 	{
 		std::lock_guard<std::mutex> _lock(m_ctxs_mtx);
 		const auto& it = m_ctxs.find(seq);

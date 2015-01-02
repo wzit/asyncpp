@@ -108,7 +108,7 @@ public:
 	virtual void on_timer(uint32_t timerid, uint32_t type, uint64_t ctx){}
 
 	/*
-	 添加一个定时器
+	 添加一个一次性定时器
 	 @param wait_time， 多少秒后定时器触发，可以为0(稍后触发)
 	*/
 	uint32_t add_timer(time_t wait_time, uint32_t type, uint64_t ctx)
@@ -117,7 +117,7 @@ public:
 	}
 
 	/*
-	 使用绝对时间添加一个定时器
+	 使用绝对时间添加一个一次性定时器
 	 @param expire_time， unix_epoch，可以为早于当前时间(稍后触发)
 	*/
 	uint32_t add_timer_abs(time_t expire_time, uint32_t type, uint64_t ctx)
@@ -454,7 +454,11 @@ public:
 	uint32_t on_write_event(NetConnect* conn);
 	void on_error_event(NetConnect* conn)
 	{
-		on_error(conn, GET_SOCK_ERR());
+		int32_t ret = on_error(conn, GET_SOCK_ERR());
+		if (ret == 0)
+		{
+			remove_conn(conn);
+		}
 	}
 protected:
 	/*一般情况下，请勿调用这些函数*/
@@ -496,7 +500,7 @@ protected:
 	         1 reject and close client conn
 			 2 reject but do NOT close client conn
 	 */
-	virtual int32_t on_accept(SOCKET_HANDLE fd){ return 0; }
+	virtual int32_t on_accept(SOCKET_HANDLE fd){return 0;}
 
 	/*
 	 连接关闭前回调(连接关闭无法被阻止)
@@ -510,8 +514,10 @@ protected:
 
 	/*
 	 连接出错后回调
+	 @return 0 close conn
+	         1 do NOT close conn
 	*/
-	virtual void on_error(NetConnect* conn, int32_t errcode){}
+	virtual int32_t on_error(NetConnect* conn, int32_t errcode){return 0;}
 
 public:
 	/*

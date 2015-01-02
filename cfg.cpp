@@ -2,6 +2,7 @@
 #include "string_utility.h"
 #include <assert.h>
 
+static std::string _cfg_empty_string;
 
 CFG::section_t& CFG::operator[](const char* section_name)
 {
@@ -24,7 +25,7 @@ const std::string& CFG::get(const char* section, const char* key) const
 		if (v != it->second.end())
 			return v->second;
 	}
-	return std::move(std::string(""));
+	return _cfg_empty_string;
 }
 
 void CFG::set(const char* section, const char* key, const char* val)
@@ -66,10 +67,10 @@ int32_t CFG::flush()
 
 	for (auto section : sections)
 	{
-		fprintf(f, "[%s]\r\n", section.first.c_str());
+		fprintf(f, "[%s]\n", section.first.c_str());
 		for (auto item : section.second)
 		{
-			fprintf(f, "%s=%s\r\n", item.first.c_str(), item.second.c_str());
+			fprintf(f, "%s=%s\n", item.first.c_str(), item.second.c_str());
 		}
 	}
 	fclose(f);
@@ -88,9 +89,19 @@ int32_t CFG::read(const char* cfg_file)
 		return errno;
 	}
 
-	for (;;)
+	char* pline = fgets(line, 4096, f);
+	if (pline != nullptr && !isprint((uint8_t)line[0]))
 	{
-		char* pline = fgets(line, 4096, f);
+		if (!((uint8_t)line[0] == 0xEF && (uint8_t)line[1] == 0xBB && (uint8_t)line[2] == 0xBF))
+		{ // utf-8 bom
+			printf("support utf8 and ascii file\n");
+			fclose(f);
+			return EINVAL;
+		}
+		pline += 3;
+	}
+	do
+	{
 		if (pline == nullptr)
 		{
 			if (feof(f)) break;
@@ -121,7 +132,7 @@ int32_t CFG::read(const char* cfg_file)
 		std::string section_name(pline + 1, pe);
 		sections.insert(std::make_pair(section_name, section_t()));
 		ret = read_next_section(sections[section_name], line, f);
-	}
+	} while ((pline = fgets(line, 4096, f)));
 
 	fclose(f);
 	return ret;
