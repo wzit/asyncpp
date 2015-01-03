@@ -382,8 +382,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 			ret = GET_SOCK_ERR();
 			if (ret == WSAEWOULDBLOCK/*win*/ || ret == WSAEINPROGRESS/*linux*/)
 			{
-				NetConnect conn(fd);
-				conn.m_state = NetConnectState::NET_CONN_CONNECTING;
+				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
 				add_conn(&conn);
 				return std::make_pair(0, fd);
 			}
