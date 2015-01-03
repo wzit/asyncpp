@@ -90,7 +90,13 @@ int32_t CFG::read(const char* cfg_file)
 	}
 
 	char* pline = fgets(line, 4096, f);
-	if (pline != nullptr && !isprint((uint8_t)line[0]))
+	if (pline != nullptr)
+	{
+		fclose(f);
+		return EINVAL;
+	}
+
+	if (!isprint((uint8_t)line[0]))
 	{
 		if (!((uint8_t)line[0] == 0xEF && (uint8_t)line[1] == 0xBB && (uint8_t)line[2] == 0xBF))
 		{ // utf-8 bom
@@ -102,15 +108,6 @@ int32_t CFG::read(const char* cfg_file)
 	}
 	do
 	{
-		if (pline == nullptr)
-		{
-			if (feof(f)) break;
-			else
-			{
-				fclose(f);
-				return EINVAL;
-			}
-		}
 		skip_space(pline);
 		int n = strlen(pline);
 		if (n == 0) continue;
@@ -132,7 +129,7 @@ int32_t CFG::read(const char* cfg_file)
 		std::string section_name(pline + 1, pe);
 		sections.insert(std::make_pair(section_name, section_t()));
 		ret = read_next_section(sections[section_name], line, f);
-	} while ((pline = fgets(line, 4096, f)));
+	} while ((pline = fgets(line, 4096, f)) != nullptr);
 
 	fclose(f);
 	return ret;

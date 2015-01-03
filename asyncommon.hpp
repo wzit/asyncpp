@@ -190,6 +190,34 @@ struct ThreadMsg
 		return *this;
 	}
 
+	/**
+	 将消息上下文分离，该上下文应当被有效接管
+	*/
+	void detach_ctx()
+	{
+		m_ctx.i64 = 0;
+		m_ctx_type = MsgContextType::STATIC;
+	}
+	
+	/**
+	 将消息缓冲区分离，该缓冲区应当被有效接管
+	*/
+	void detach_buf()
+	{
+		m_buf = nullptr;
+		m_buf_len = 0;
+		m_buf_type = MsgBufferType::STATIC;
+	}
+	
+	/**
+	 将消息数据分离，该数据应当被有效接管
+	*/
+	void detach()
+	{
+		detach_ctx();
+		detach_buf();
+	}
+
 	~ThreadMsg()
 	{
 		free_buffer(m_buf, m_buf_type);

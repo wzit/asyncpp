@@ -111,10 +111,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
-		msg.m_buf = nullptr;
-		msg.m_buf_type = MsgBufferType::STATIC;
-		msg.m_ctx.obj = nullptr;
-		msg.m_ctx_type = MsgContextType::STATIC;
+		msg.detach();
 	}
 		break;
 	default:
@@ -385,8 +382,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 			ret = GET_SOCK_ERR();
 			if (ret == WSAEWOULDBLOCK/*win*/ || ret == WSAEINPROGRESS/*linux*/)
 			{
-				NetConnect conn(fd);
-				conn.m_state = NetConnectState::NET_CONN_CONNECTING;
+				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
 				add_conn(&conn);
 				return std::make_pair(0, fd);
 			}

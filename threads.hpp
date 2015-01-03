@@ -254,7 +254,7 @@ struct NetConnect
 		, m_fd(INVALID_SOCKET)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
-		, m_state(NetConnectState::NET_CONN_CONNECTING)
+		, m_state(NetConnectState::NET_CONN_CLOSED)
 	{
 	}
 	NetConnect(SOCKET_HANDLE fd,
@@ -649,7 +649,9 @@ public:
 	virtual void set_rdwr_event(NetConnect* conn) override{}
 	virtual NetConnect* get_conn(uint32_t conn_id) override
 	{
-		return &m_conn;
+		assert(conn_id == m_conn.id());
+		if (conn_id == m_conn.id()) return &m_conn;
+		else return nullptr;
 	}
 	virtual int32_t remove_conn(NetConnect* conn) override
 	{
@@ -845,6 +847,9 @@ public:
 public:
 	virtual int32_t add_conn(NetConnect* conn) override
 	{
+		assert(conn->m_body_len != INVALID_SOCKET);
+		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
+		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
 		if (set_sock_nonblock(conn->m_fd) == 0)
 		{
 			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
