@@ -243,6 +243,8 @@ L_READ:
 		{ //recv one package
 			process_net_msg(conn);
 			conn->m_recv_len = 0;
+			conn->m_header_len = 0;
+			conn->m_body_len = 0;
 		}
 		else if (package_len < conn->m_recv_len)
 		{ //recv more than one package
@@ -251,6 +253,8 @@ L_READ:
 			memmove(conn->m_recv_buf,
 				conn->m_recv_buf + package_len, remain_len);
 			conn->m_recv_len = remain_len;
+			conn->m_header_len = 0;
+			conn->m_body_len = 0;
 		}
 		else
 		{ // recv partial package
