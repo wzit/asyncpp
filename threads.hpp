@@ -764,6 +764,8 @@ public:
 				const auto& r = create_connect_socket(msg.m_buf,
 					static_cast<uint16_t>(msg.m_ctx.i64));
 
+				logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+
 				get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
 					nullptr, 0, MsgBufferType::STATIC,
 					{ static_cast<uint64_t>(r.first) << 32 |
@@ -794,6 +796,8 @@ public:
 				static_cast<thread_pool_id_t>(msg.m_ctx.i64 >> 16),
 				static_cast<thread_pool_id_t>(msg.m_ctx.i64));
 
+			logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+
 			get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 				nullptr, 0, MsgBufferType::STATIC,
 				{ static_cast<uint64_t>(r.first) << 32 |
@@ -808,6 +812,9 @@ public:
 			if (dnsctx->m_ret == 0)
 			{
 				const auto& r = create_connect_socket(dnsctx->m_ip, dnsctx->m_port);
+
+				logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+
 				respctx.i64 = static_cast<uint64_t>(r.first) << 32
 					| static_cast<uint32_t>(r.second);
 			}
