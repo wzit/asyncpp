@@ -90,7 +90,7 @@ int32_t CFG::read(const char* cfg_file)
 	}
 
 	char* pline = fgets(line, 4096, f);
-	if (pline != nullptr)
+	if (pline == nullptr)
 	{
 		fclose(f);
 		return EINVAL;
