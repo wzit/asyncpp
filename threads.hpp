@@ -201,16 +201,6 @@ public:
 };
 
 /************** Net Connection Info ****************/
-enum class NetConnectState : uint8_t
-{
-	NET_CONN_CONNECTED,
-	NET_CONN_LISTENING,
-	NET_CONN_CONNECTING,
-	NET_CONN_CLOSING,
-	NET_CONN_CLOSED,
-	NET_CONN_ERROR,
-};
-
 enum class NetMsgType : uint8_t
 {
 	CUSTOM_BIN,
@@ -876,7 +866,7 @@ public:
 		if (set_sock_nonblock(conn->m_fd) == 0)
 		{
 			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
-			m_selector.add(conn->m_fd);
+			m_selector.add(conn->m_fd, conn->m_state);
 			m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
 			return 0;
 		}
