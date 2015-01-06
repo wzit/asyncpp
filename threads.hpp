@@ -243,6 +243,7 @@ struct NetConnect
 	thread_id_t m_client_thread; //for listen socket only
 	NetConnectState m_state;
 
+public:
 	NetConnect()
 		: m_send_list()
 		, m_recv_buf(nullptr)
@@ -325,6 +326,8 @@ struct NetConnect
 		}
 		return *this;
 	}
+
+public:
 	void enlarge_recv_buffer(int32_t n)
 	{
 		if (n > m_recv_buf_len)
@@ -344,16 +347,6 @@ struct NetConnect
 		m_recv_len = 0;
 	}
 	uint32_t id(){ return static_cast<uint32_t>(m_fd); }
-	int32_t send(char* msg, uint32_t msg_len,
-		MsgBufferType buf_type = MsgBufferType::STATIC)
-	{
-		if (m_send_list.size() < 64)
-		{
-			m_send_list.push({ msg, msg_len, 0, buf_type });
-			return 0;
-		}
-		else return EAGAIN;
-	}
 	std::pair<std::string, uint16_t> get_addr()
 	{
 		char ip[MAX_IP] = {};
@@ -377,6 +370,29 @@ struct NetConnect
 		inet_ntop(addr.sin_family,
 			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
 		return {std::string(ip), be16toh(addr.sin_port)};
+	}
+	int32_t setopt(SOCKET_HANDLE s, int level, int optname, const char* optval, int optlen)
+	{
+		return setsockopt(s, level, optname, optval, optlen);
+	}
+
+	int32_t set_nodelay(int32_t bEnable = 1)
+	{
+		return setopt(m_fd, IPPROTO_TCP, TCP_NODELAY,
+			reinterpret_cast<const char*>(&bEnable), sizeof bEnable);
+	}
+
+public: //private
+	/*请勿使用*/
+	int32_t send(char* msg, uint32_t msg_len,
+		MsgBufferType buf_type = MsgBufferType::STATIC)
+	{
+		if (m_send_list.size() < 64)
+		{
+			m_send_list.push({ msg, msg_len, 0, buf_type });
+			return 0;
+		}
+		else return EAGAIN;
 	}
 };
 
