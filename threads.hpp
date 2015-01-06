@@ -371,14 +371,14 @@ public:
 			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
 		return {std::string(ip), be16toh(addr.sin_port)};
 	}
-	int32_t setopt(SOCKET_HANDLE s, int level, int optname, const char* optval, int optlen)
+	int32_t setopt(int level, int optname, const char* optval, int optlen)
 	{
-		return setsockopt(s, level, optname, optval, optlen);
+		return setsockopt(m_fd, level, optname, optval, optlen);
 	}
 
 	int32_t set_nodelay(int32_t bEnable = 1)
 	{
-		return setopt(m_fd, IPPROTO_TCP, TCP_NODELAY,
+		return setopt(IPPROTO_TCP, TCP_NODELAY,
 			reinterpret_cast<const char*>(&bEnable), sizeof bEnable);
 	}
 
@@ -562,7 +562,7 @@ public:
 	virtual void reset(NetConnect* conn)
 	{
 		struct linger so_linger = { 1, 0 }; //set linger on and wait 0s (i.e. do NOT wait)
-		setsockopt(conn->m_fd, SOL_SOCKET, SO_LINGER,
+		conn->setopt(SOL_SOCKET, SO_LINGER,
 			reinterpret_cast<const char*>(&so_linger), sizeof so_linger);
 		remove_conn(conn);
 	}
@@ -780,7 +780,7 @@ public:
 				const auto& r = create_connect_socket(msg.m_buf,
 					static_cast<uint16_t>(msg.m_ctx.i64));
 
-				logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
 				get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
 					nullptr, 0, MsgBufferType::STATIC,
@@ -812,7 +812,7 @@ public:
 				static_cast<thread_pool_id_t>(msg.m_ctx.i64 >> 16),
 				static_cast<thread_pool_id_t>(msg.m_ctx.i64));
 
-			logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+			_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
 			get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 				nullptr, 0, MsgBufferType::STATIC,
@@ -829,7 +829,7 @@ public:
 			{
 				const auto& r = create_connect_socket(dnsctx->m_ip, dnsctx->m_port);
 
-				logger_debug(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
 				respctx.i64 = static_cast<uint64_t>(r.first) << 32
 					| static_cast<uint32_t>(r.second);

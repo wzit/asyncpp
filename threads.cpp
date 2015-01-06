@@ -109,7 +109,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
 		dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
 
-		logger_debug(logger, "query dns result:%d, host:%d, ip", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
+		_DEBUGLOG(logger, "query dns result:%d, host:%d, ip", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
 
 		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
