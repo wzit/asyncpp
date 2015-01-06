@@ -38,7 +38,7 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t ms)
 			}
 		}
 		t->m_ss.sample(bytes_recv, bytes_sent);
-		return bytes_sent + bytes_recv//ret;
+		return bytes_sent + bytes_recv; //ret;
 	}
 	else if(ret < 0)
 	{
