@@ -337,6 +337,11 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 	if (fd == INVALID_SOCKET)
 		return std::make_pair(GET_SOCK_ERR(), fd);
 
+	int32_t bReuse = 1;
+	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, 
+		reinterpret_cast<char*>(&bReuse), sizeof bReuse);
+	assert(ret == 0);
+
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
