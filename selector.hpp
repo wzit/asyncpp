@@ -10,6 +10,16 @@
 #include <cerrno>
 #include <cassert>
 
+enum class NetConnectState : uint8_t
+{
+	NET_CONN_CONNECTED,
+	NET_CONN_LISTENING,
+	NET_CONN_CONNECTING,
+	NET_CONN_CLOSING,
+	NET_CONN_CLOSED,
+	NET_CONN_ERROR,
+};
+
 #ifdef _WIN32
 #pragma warning(disable:4819) //for visual studio
 #endif
@@ -76,11 +86,26 @@ public:
 	EpollSelector(const EpollSelector&) = delete;
 	EpollSelector& operator=(const EpollSelector&) = delete;
 
-	int32_t add(SOCKET_HANDLE fd)
+	int32_t add(SOCKET_HANDLE fd, NetConnectState state)
 	{
 		struct epoll_event ev;
 		assert(fd != INVALID_SOCKET);
-		ev.events = EPOLLIN|EPOLLOUT;
+		if (state == NetConnectState::NET_CONN_CONNECTED)
+		{
+			ev.events = EPOLLIN|EPOLLOUT;
+		}
+		else if (state == NetConnectState::NET_CONN_LISTENING)
+		{
+			ev.events = EPOLLIN;
+		}
+		else if (state == NetConnectState::NET_CONN_CONNECTING)
+		{
+			ev.events = EPOLLOUT;
+		}
+		else
+		{
+			assert(0);
+		}
 		ev.data.fd = fd;
 		return epoll_ctl(m_fd, EPOLL_CTL_ADD, fd, &ev);
 	}
@@ -137,6 +162,8 @@ public:
 #define MSG_NOSIGNAL 0
 
 #define GET_SOCK_ERR() WSAGetLastError()
+
+#define _DISABLE_IOCP
 
 #ifndef _DISABLE_IOCP
 
@@ -208,10 +235,25 @@ public:
 	SelSelector(const SelSelector&) = delete;
 	SelSelector& operator=(const SelSelector&) = delete;
 
-	int32_t add(SOCKET_HANDLE fd)
+	int32_t add(SOCKET_HANDLE fd, NetConnectState state)
 	{
 		assert(fd != INVALID_SOCKET);
-		m_fds.insert(std::make_pair(fd, SELIN | SELOUT));
+		if (state == NetConnectState::NET_CONN_CONNECTED)
+		{
+			m_fds.insert(std::make_pair(fd, SELIN | SELOUT));
+		}
+		else if (state == NetConnectState::NET_CONN_LISTENING)
+		{
+			m_fds.insert(std::make_pair(fd, SELIN));
+		}
+		else if (state == NetConnectState::NET_CONN_CONNECTING)
+		{
+			m_fds.insert(std::make_pair(fd, SELOUT));
+		}
+		else
+		{
+			assert(0);
+		}
 		return 0;
 	}
 	int32_t del(SOCKET_HANDLE fd)

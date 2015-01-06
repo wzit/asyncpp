@@ -33,11 +33,12 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t ms)
 			}
 			if(evs[i].events & EPOLLERR)
 			{
+				++bytes_recv;
 				t->on_error_event(conn);
 			}
 		}
 		t->m_ss.sample(bytes_recv, bytes_sent);
-		return ret;
+		return bytes_sent + bytes_recv//ret;
 	}
 	else if(ret < 0)
 	{
@@ -132,6 +133,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t ms)
 			}
 		}
 		t->m_ss.sample(bytes_recv, bytes_sent);
+		return bytes_sent + bytes_recv;
 	}
 	else if (n < 0)
 	{
@@ -139,7 +141,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t ms)
 		n = 0;
 	}
 
-	return n;
+	return 0;
 }
 
 } //end of namespace asyncpp
