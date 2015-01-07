@@ -11,12 +11,22 @@
 #include <stdlib.h>
 #include <assert.h>
 
+enum class CodePage
+{
+	ASCII,
+	UTF8,
+	UTF16,
+	GBK,
+	BIG5,
+};
+
 class JOWriter
 {
 private:
 	char* m_buf;
 	uint32_t m_buf_len;
 	uint32_t m_json_len;
+	CodePage m_input_codepage;
 private:
 	void enlarge_buffer(uint32_t new_size)
 	{
@@ -29,6 +39,14 @@ public:
 		: m_buf(nullptr)
 		, m_buf_len(0)
 		, m_json_len(0)
+		, m_input_codepage(CodePage::ASCII)
+	{
+	}
+	JOWriter(CodePage cp)
+		: m_buf(nullptr)
+		, m_buf_len(0)
+		, m_json_len(0)
+		, m_input_codepage(cp)
 	{
 	}
 	JOWriter(uint32_t init_buf_len)
@@ -42,6 +60,10 @@ public:
 	JOWriter(const JOWriter&) = delete;
 	JOWriter& operator=(const JOWriter&) = delete;
 public:
+	void set_input_codepage(CodePage cp)
+	{
+		m_input_codepage = cp;
+	}
 	char* get_string(){ return m_buf; }
 	uint32_t get_length(){ return m_json_len; }
 	void reserve(uint32_t n)
