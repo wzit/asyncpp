@@ -9,6 +9,7 @@
 #include <alloca.h>
 #elif defined(_WIN32)
 #include <malloc.h>
+#include <Windows.h>
 #else
 #error os not support
 #endif
@@ -125,7 +126,7 @@ static void escape_utf8(char** p_dst, const char** p_s)
 	}
 }
 
-static int32_t jo_escape_string(char* dst, const char* s, uint32_t len)
+static int32_t jo_escape_utf8_string(char* dst, const char* s, uint32_t len)
 {
 	const char* in = s;
 	const char* end = in + len;
@@ -153,12 +154,67 @@ static int32_t jo_escape_string(char* dst, const char* s, uint32_t len)
 	return out - dst;
 }
 
+static int32_t jo_escape_utf16_string(char* dst, const wchar_t* s, uint32_t len)
+{
+	char* out = dst;
+	for (uint32_t i = 0; i < len; ++i)
+	{
+		if (s[i] & 0xff00)
+		{
+			*out++ = '\\';
+			*out++ = 'u';
+			*out++ = int2hex_lower((uint16_t)s[i] >> 12);
+			*out++ = int2hex_lower(((uint16_t)s[i] >> 8) & 0xf);
+			*out++ = int2hex_lower(((uint16_t)s[i] >> 4) & 0xf);
+			*out++ = int2hex_lower((uint16_t)s[i] & 0xf);
+		}
+		else
+		{
+			if (json_writer_escape_table[CHAR_TO_INT(s[i + 1])])
+			{
+				*out++ = '\\';
+				*out++ = json_writer_escape_table[CHAR_TO_INT(s[i + 1])];
+			}
+			else *out++ = CHAR_TO_INT(s[i + 1]);
+		}
+	}
+	return out - dst;
+}
+
 void JOWriter::add_value_string(const char* s, uint32_t len)
 {
 	char* buf = (char*)alloca(len * 3 + 3);
 	int32_t esc_len = 0;
 	buf[esc_len++] = '"';
-	esc_len += jo_escape_string(buf + esc_len, s, len);
+	if (m_input_codepage == CodePage::ASCII ||
+		m_input_codepage == CodePage::UTF8)
+	{
+		esc_len += jo_escape_utf8_string(buf + esc_len, s, len);
+	}
+	else
+	{
+#ifdef _WIN32
+		int32_t ucs2len = len;
+		wchar_t* ucs2 = (wchar_t*)alloca(ucs2len * 2 + 1);
+		if (m_input_codepage == CodePage::GBK)
+		{
+			ucs2len = MultiByteToWideChar(936, 0, s, len, ucs2, ucs2len);
+		}
+		else if (m_input_codepage == CodePage::UTF16)
+		{
+		}
+		else if (m_input_codepage == CodePage::BIG5)
+		{
+			ucs2len = MultiByteToWideChar(950, 0, s, len, ucs2, ucs2len);
+		}
+		else
+		{ // impossible
+			assert(0);
+		}
+		assert(ucs2len != 0);
+		esc_len += jo_escape_utf16_string(buf + esc_len, ucs2, ucs2len);
+#endif
+	}
 	buf[esc_len++] = '"';
 	append(buf, esc_len);
 }
@@ -222,7 +278,7 @@ void JOWriter::object_add_name(const char* s, uint32_t len)
 		buf[esc_len++] = ',';
 	}
 	buf[esc_len++] = '"';
-	esc_len += jo_escape_string(buf + esc_len, s, len);
+	esc_len += jo_escape_utf8_string(buf + esc_len, s, len);
 	buf[esc_len++] = '"';
 	buf[esc_len++] = ':';
 	append(buf, esc_len);
@@ -357,7 +413,7 @@ void JOWriter::array_end()
 	push_back(']');
 }
 
-#if 0
+#if 1
 /*********** example ************/
 const char* dest_json_string = 
 "{"
@@ -424,6 +480,7 @@ static void test_add_array(JOWriter& jw, int32_t a1, int32_t a2)
 void test_jo_writer()
 {
 	JOWriter jw;
+	jw.set_input_codepage(CodePage::GBK);
 	jw.object_begin();
 	jw.object_add_int32("n1", 1);
 
