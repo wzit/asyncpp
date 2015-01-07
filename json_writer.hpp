@@ -42,14 +42,11 @@ public:
 		, m_input_codepage(CodePage::ASCII)
 	{
 	}
-	JOWriter(CodePage cp)
+	JOWriter(uint32_t init_buf_len, CodePage cp = CodePage::ASCII)
 		: m_buf(nullptr)
 		, m_buf_len(0)
 		, m_json_len(0)
 		, m_input_codepage(cp)
-	{
-	}
-	JOWriter(uint32_t init_buf_len)
 	{
 		m_buf = (char*)malloc(init_buf_len);
 		assert(m_buf != nullptr);
