@@ -170,12 +170,12 @@ static int32_t jo_escape_utf16_string(char* dst, const wchar_t* s, uint32_t len)
 		}
 		else
 		{
-			if (json_writer_escape_table[CHAR_TO_INT(s[i + 1])])
+			if (json_writer_escape_table[CHAR_TO_INT(s[i])])
 			{
 				*out++ = '\\';
-				*out++ = json_writer_escape_table[CHAR_TO_INT(s[i + 1])];
+				*out++ = json_writer_escape_table[CHAR_TO_INT(s[i])];
 			}
-			else *out++ = CHAR_TO_INT(s[i + 1]);
+			else *out++ = CHAR_TO_INT(s[i]);
 		}
 	}
 	return out - dst;
@@ -473,6 +473,14 @@ static void test_add_array(JOWriter& jw, int32_t a1, int32_t a2)
 	jw.array_end();
 	jw.array_add_string("a b	cd'\"'ef", 11);
 	const char* p = "中华人民共和国";
+	jw.array_add_string(p, strlen(p));
+	p = "C:\\";
+	jw.array_add_string(p, strlen(p));
+	p = "D:\\";
+	jw.array_add_string(p, strlen(p));
+	p = "E:\\";
+	jw.array_add_string(p, strlen(p));
+	p = "F:\\";
 	jw.array_add_string(p, strlen(p));
 	jw.array_end();
 }
