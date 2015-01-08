@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <thread>
+#include <errno.h>
 
 #ifdef _WIN32
 
@@ -78,5 +79,35 @@ if (LOGGER_##logger_level >= logger->m_level)\
 #define logger_warn(logger, fmt, ...) _logger_wrapper(logger, WARN, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
 #define logger_error(logger, fmt, ...) _logger_wrapper(logger, ERROR, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
 #define logger_fatal(logger, fmt, ...) _logger_wrapper(logger, FATAL, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+
+#ifndef _RELEASE
+#define logger_assert(expr) \
+if (!(expr))\
+{\
+	int32_t _lg_errcode = errno;\
+	logger_fatal(default_logger, "Assertion '" #expr "' failed. errno:%d[%s]", _lg_errcode, strerror(_lg_errcode)); \
+	fprintf(stderr, "%s: %u: %s: Assertion '" #expr "' failed.\n", __FILE__, __LINE__, __FUNCSIG__); \
+	abort();\
+}
+
+#define logger_assert_val(ret) \
+if (ret != 0)\
+{\
+	logger_fatal(default_logger, #ret " = %d.", ret); \
+	fprintf(stderr, "%s: %u: %s: " #ret " = %d\n", __FILE__, __LINE__, __FUNCSIG__, ret); \
+	abort(); \
+}
+
+#define logger_assert_false() \
+{\
+	logger_fatal(default_logger, "Assertion fatal error."); \
+	fprintf(stderr, "%s: %u: %s: Assertion fatal error.\n", __FILE__, __LINE__, __FUNCSIG__); \
+	abort(); \
+}
+#else
+#define logger_assert(expr)
+#define logger_assert_ret_val(ret)
+#define logger_assert_false()
+#endif
 
 #endif
