@@ -16,6 +16,7 @@
 #endif
 
 #define DIR_SEP '\\'
+DWORD WINAPI GetCurrentThreadId(void);
 #define THREADID static_cast<uint32_t>(GetCurrentThreadId())
 
 #else
