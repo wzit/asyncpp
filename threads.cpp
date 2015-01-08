@@ -109,7 +109,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
 		dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
 
-		_DEBUGLOG(logger, "query dns result:%d, host:%d, ip", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
+		_DEBUGLOG(logger, "query dns result:%d, host:%s, ip:%s", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
 
 		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
@@ -160,7 +160,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 			{
 				on_error_event(conn);
-				_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
+				_INFOLOG(logger, "socket_fd:%d accept error:%d", conn->m_fd, errcode);
 			}
 			break;
 		}
@@ -211,7 +211,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			{
 				///TODO: drop msg if fail several times
 				on_error_event(conn);
-				_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
+				_INFOLOG(logger, "socket_fd:%d error:%d", conn->m_fd, errcode);
 			}
 			return bytes_sent;
 		}
@@ -276,7 +276,7 @@ L_READ:
 	}
 	else if (recv_len == 0)
 	{ //peer close conn ///TODO: 半关闭
-		_TRACELOG(logger, "socket_fd:%d close");
+		_TRACELOG(logger, "socket_fd:%d close", conn->m_fd);
 		if (conn->m_recv_len > 0)
 		{
 			process_net_msg(conn);
@@ -289,7 +289,7 @@ L_READ:
 		if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 		{
 			on_error_event(conn);
-			_INFOLOG(logger, "socket_fd:%d error:%d", errcode);
+			_INFOLOG(logger, "socket_fd:%d error:%d", conn->m_fd, errcode);
 		}
 	}
 
