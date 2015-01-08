@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #ifdef _WIN32
+#include <Winsock2.h>
 #include <Windows.h>
 
 #ifndef localtime_r
