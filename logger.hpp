@@ -92,13 +92,15 @@ if (!(expr))\
 	abort();\
 }
 
-#define logger_assert_val(ret) \
-if (ret != 0)\
+#define logger_assert_val(int_var, expected_val) \
+if (int_var != expected_val)\
 {\
-	logger_fatal(logger, #ret " = %d.", ret); \
-	fprintf(stderr, "%s: %u: %s: " #ret " = %d\n", __FILE__, __LINE__, __FUNCSIG__, ret); \
+	logger_fatal(logger, #int_var " = %d.", int_var); \
+	fprintf(stderr, "%s: %u: %s: " #int_var " = %d\n", __FILE__, __LINE__, __FUNCSIG__, int_var); \
 	abort(); \
 }
+
+#define logger_assert_ret(ret) logger_assert_val(ret, 0)
 
 #define logger_assert_false() \
 {\
