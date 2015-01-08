@@ -413,7 +413,7 @@ void JOWriter::array_end()
 	push_back(']');
 }
 
-#if 1
+#if 0
 /*********** example ************/
 const char* dest_json_string = 
 "{"
