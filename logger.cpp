@@ -13,7 +13,6 @@
 #define STDIN_FILENO    0   /* Standard input.  */
 #define STDOUT_FILENO   1   /* Standard output.  */
 #define STDERR_FILENO   2   /* Standard error output.  */
-
 #define mkdir(path, mode) _mkdir(path)
 #define write(fd, buf,len) _write(fd, buf, len)
 #endif
