@@ -1,4 +1,4 @@
-﻿#include "asyncpp.hpp"
+﻿#include "lib/asyncpp/asyncpp.hpp"
 
 using namespace std;
 using namespace asyncpp;
@@ -70,7 +70,7 @@ public:
 			//处理新建连接等请求
 			MultiplexNetThread<SelSelector>::process_msg(msg);
 		}
-		free_buffer(msg.m_buf, msg.m_buf_type);
+//		free_buffer(msg.m_buf, msg.m_buf_type);
 	}
 };
 

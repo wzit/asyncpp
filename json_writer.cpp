@@ -9,6 +9,7 @@
 #include <alloca.h>
 #elif defined(_WIN32)
 #include <malloc.h>
+#include <WinSock2.h>
 #include <Windows.h>
 #else
 #error os not support
