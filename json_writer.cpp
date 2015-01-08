@@ -495,11 +495,13 @@ void test_jo_writer()
 	printf("%s\n", jw.get_string());
 }
 
+#if 0
 int main()
 {
 	test_json_writer();
 	test_jo_writer();
 	return 0;
 }
+#endif
 
 #endif
