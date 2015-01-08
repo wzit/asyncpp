@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #ifdef _WIN32
+#include <Windows.h>
 
 #ifndef localtime_r
 #define localtime_r(unix_time, tms) localtime_s(tms, unix_time)
@@ -16,7 +17,6 @@
 #endif
 
 #define DIR_SEP '\\'
-DWORD WINAPI GetCurrentThreadId(void);
 #define THREADID static_cast<uint32_t>(GetCurrentThreadId())
 
 #else
