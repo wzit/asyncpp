@@ -65,13 +65,20 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 	*p_cur = 0;
 	m_path_hash_value = time33_hash(m_path);
 
-	if (p_cur - url == static_cast<int32_t>(len)) return 0;
+	return append_params_inplace(p_cur + 1, len - (p_cur - url));
+}
+
+int32_t HttpQueryStringParser::append_params_inplace(
+	char* query_string, uint32_t query_string_len)
+{
+	if (query_string_len == 0) return 0;
 
 	//param
-	url[len] = '&';
-	url[len+1] = 0;
+	query_string[query_string_len] = '&';
+	query_string[query_string_len+1] = 0;
 	char* p_val;
-	char* p_param = ++p_cur;
+	char* p_cur = query_string;
+	char* p_param = p_cur;
 	while(*p_cur){
 		while(*p_cur!='='){
 			if(*p_cur=='&')
@@ -87,7 +94,7 @@ LABLE_NEXT_PARAM:
 		p_param = ++p_cur;
 	}
 
-	url[len] = 0;
+	query_string[query_string_len] = 0;
 	return 0;
 }
 

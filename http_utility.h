@@ -35,11 +35,20 @@ private:
 
 public:
 	/**
-	 原地解析URL中的参数列表，传入的URL将会被改变，需保证URL缓冲区长度至少为 url_len+1
+	 原地解析URL中的参数列表
+	 传入的URL将会被改变，需保证URL缓冲区长度至少为 url_len+1
 	 URL的内存将用于随后的get_param调用中，调用者需保证其生命周期足够长
 	 @return 0表示成功
 	 */
 	int32_t parse_url_inplace(char* url, uint32_t url_len);
+
+	/**
+	 原地解析query_string中的参数列表，并将这些参数附加到当前参数列表中
+	 传入的URL将会被改变，需保证URL缓冲区长度至少为 url_len+1
+	 URL的内存将用于随后的get_param调用中，调用者需保证其生命周期足够长
+	 @return 0表示成功
+	 */
+	int32_t append_params_inplace(char* query_string, uint32_t query_string_len);
 
 public:
 	/**
