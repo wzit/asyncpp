@@ -85,7 +85,7 @@ if (LOGGER_##logger_level >= logger->m_level)\
 if (!(expr))\
 {\
 	int32_t _lg_errcode = errno;\
-	logger_fatal(default_logger, "Assertion '" #expr "' failed. errno:%d[%s]", _lg_errcode, strerror(_lg_errcode)); \
+	logger_fatal(logger, "Assertion '" #expr "' failed. errno:%d[%s]", _lg_errcode, strerror(_lg_errcode)); \
 	fprintf(stderr, "%s: %u: %s: Assertion '" #expr "' failed.\n", __FILE__, __LINE__, __FUNCSIG__); \
 	abort();\
 }
@@ -93,14 +93,14 @@ if (!(expr))\
 #define logger_assert_val(ret) \
 if (ret != 0)\
 {\
-	logger_fatal(default_logger, #ret " = %d.", ret); \
+	logger_fatal(logger, #ret " = %d.", ret); \
 	fprintf(stderr, "%s: %u: %s: " #ret " = %d\n", __FILE__, __LINE__, __FUNCSIG__, ret); \
 	abort(); \
 }
 
 #define logger_assert_false() \
 {\
-	logger_fatal(default_logger, "Assertion fatal error."); \
+	logger_fatal(logger, "Assertion fatal error."); \
 	fprintf(stderr, "%s: %u: %s: Assertion fatal error.\n", __FILE__, __LINE__, __FUNCSIG__); \
 	abort(); \
 }
