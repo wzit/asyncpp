@@ -251,9 +251,17 @@ public:
 	{
 		return get_thread(t_pool_id, t_id)->full();
 	}
+	uint32_t get_queued_msg_number(thread_pool_id_t t_pool_id, thread_id_t t_id)
+	{
+		return get_thread(t_pool_id, t_id)->get_queued_msg_number();
+	}
 	bool is_msg_queue_full(thread_pool_id_t t_pool_id)
 	{
 		return get_thread_pool(t_pool_id)->full();
+	}
+	uint32_t get_queued_msg_number(thread_pool_id_t t_pool_id)
+	{
+		return get_thread_pool(t_pool_id)->get_queued_msg_number();
 	}
 
 	/*****************************server manager*****************************/

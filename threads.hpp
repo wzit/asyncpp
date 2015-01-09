@@ -12,6 +12,19 @@
 #include <utility>
 #include <thread>
 
+#ifndef _ASYNCPP_THREAD_QUEUE_SIZE
+#define _ASYNCPP_THREAD_QUEUE_SIZE 32
+#endif
+
+#ifndef _ASYNCPP_THREAD_MSG_CACHE_SIZE
+#define _ASYNCPP_THREAD_MSG_CACHE_SIZE 4
+#endif
+
+
+#ifndef _ASYNCPP_THREAD_POOL_QUEUE_SIZE
+#define _ASYNCPP_THREAD_POOL_QUEUE_SIZE 256
+#endif
+
 namespace asyncpp
 {
 
@@ -28,11 +41,10 @@ class ThreadPool;
 class BaseThread
 {
 protected:
-	FixedSizeCircleQueue<ThreadMsg, 128> m_msg_queue;
+	FixedSizeCircleQueue<ThreadMsg, _ASYNCPP_THREAD_QUEUE_SIZE> m_msg_queue;
 	pqueue<TimerMsg> m_timer;
 	std::unordered_map<uint64_t, MsgContext*> m_ctxs;
-	enum {MSG_CACHE_SIZE = 16};
-	ThreadMsg m_msg_cache[MSG_CACHE_SIZE];
+	ThreadMsg m_msg_cache[_ASYNCPP_THREAD_MSG_CACHE_SIZE];
 	ThreadPool* m_master;
 	thread_id_t m_id;
 	ThreadState m_state;
@@ -908,7 +920,7 @@ class AsyncFrame;
 class ThreadPool
 {
 private:
-	FixedSizeCircleQueue<ThreadMsg, 256> m_msg_queue;
+	FixedSizeCircleQueue<ThreadMsg, _ASYNCPP_THREAD_POOL_QUEUE_SIZE> m_msg_queue;
 	std::vector<BaseThread*> m_threads;
 	AsyncFrame* m_master;
 	thread_pool_id_t m_id;
