@@ -658,7 +658,7 @@ void NonblockNetThread::process_msg(ThreadMsg& msg)
 		return;
 		break;
 	}
-	_DEBUGLOG(logger, "reject client:%llu, result:%d", msg.m_ctx.i64, ret);
+	_DEBUGLOG(logger, "reject client:%" PRIu64 ", result:%d", msg.m_ctx.i64, ret);
 	get_asynframe()->send_resp_msg(NET_ACCEPT_CLIENT_RESP,
 		nullptr, 0, MsgBufferType::STATIC,
 		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
@@ -726,8 +726,8 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 		}
 		break;
 	case NET_ACCEPT_CLIENT_RESP:
-		_WARNLOG(logger, "recv accept client resp:%#llx,"
-			" from %hu:%hu, to %hu:%hu", msg.m_ctx.i64,
+		_WARNLOG(logger, "recv accept client resp:%#" PRIx64
+			", from %hu:%hu, to %hu:%hu", msg.m_ctx.i64,
 			msg.m_src_thread_pool_id, msg.m_src_thread_id,
 			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
 		return;

@@ -6,6 +6,11 @@
 #include <thread>
 #include <errno.h>
 
+#ifdef __cplusplus
+#define __STDC_FORMAT_MACROS
+#endif
+#include <inttypes.h>
+
 #ifdef _WIN32
 #include <Winsock2.h>
 #include <Windows.h>
