@@ -47,7 +47,10 @@ enum class NetConnectState : uint8_t
 #endif
 
 #define SOCKET_HANDLE int
-#define INVALID_SOCKET  -1
+namespace asyncpp
+{
+const int INVALID_SOCKET = -1;
+}
 #define INVALID_HANDLE_VALUE -1
 #define closesocket(fd) close(fd)
 #define GET_SOCK_ERR() errno
