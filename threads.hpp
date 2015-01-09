@@ -167,7 +167,7 @@ public:
 				m_timer.pop();
 
 				++cnt;
-				_TRACELOG(logger, "run timerid:%d, type:%u, ctx:%llu", timer_id, type, ctx);
+				_TRACELOG(logger, "run timerid:%d, type:%u, ctx:%" PRIu64, timer_id, type, ctx);
 				on_timer(timer_id, type, ctx);
 			}
 			else break;
