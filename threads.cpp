@@ -11,7 +11,7 @@ uint32_t BaseThread::check_timer_and_thread_msg()
 {
 	uint32_t self_msg_cnt = 0;
 	uint32_t pool_msg_cnt = 0;
-	self_msg_cnt = m_msg_queue.pop(m_msg_cache, MSG_CACHE_SIZE);
+	self_msg_cnt = m_msg_queue.pop(m_msg_cache, _ASYNCPP_THREAD_MSG_CACHE_SIZE);
 	for (uint32_t i = 0; i < self_msg_cnt; ++i)
 	{
 		_TRACELOG(logger, "msg_type:%d, from %hu:%hu, to %hu:%hu",
@@ -22,7 +22,7 @@ uint32_t BaseThread::check_timer_and_thread_msg()
 	}
 	if (get_thread_pool_id() != 0)
 	{
-		pool_msg_cnt = m_master->pop(m_msg_cache, MSG_CACHE_SIZE);
+		pool_msg_cnt = m_master->pop(m_msg_cache, _ASYNCPP_THREAD_MSG_CACHE_SIZE);
 		for (uint32_t i = 0; i < pool_msg_cnt; ++i)
 		{
 			_TRACELOG(logger, "msg_type:%d, from %hu:%hu, to %hu:%hu",
