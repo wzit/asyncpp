@@ -510,7 +510,7 @@ int32_t calc_http_chunked(NetConnect* conn)
 			if (pchunkbody[0] == '\r' && pchunkbody[1] == '\n')
 				break;
 		}
-		if (pchunkbody == end - 1)
+		if (pchunkbody >= end - 1)
 		{
 			return conn->m_recv_len * 2;
 		}
@@ -528,7 +528,7 @@ int32_t calc_http_chunked(NetConnect* conn)
 				if (pchunkbody[0] == '\r' && pchunkbody[1] == '\n')
 					break;
 			}
-			if (pchunkbody == end - 1)
+			if (pchunkbody >= end - 1)
 			{
 				return conn->m_recv_len * 2;
 			}
@@ -550,7 +550,8 @@ int32_t calc_http_chunked(NetConnect* conn)
 		}
 	} while (conn->m_header_len + conn->m_body_len < conn->m_recv_len);
 
-	return conn->m_header_len + conn->m_body_len;
+	if (chunklen == 0) return conn->m_header_len + conn->m_body_len;
+	else return conn->m_header_len + conn->m_body_len + 32;
 }
 
 int32_t NetBaseThread::frame(NetConnect* conn)
