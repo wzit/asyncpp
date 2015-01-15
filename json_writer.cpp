@@ -187,34 +187,37 @@ void JOWriter::add_value_string(const char* s, uint32_t len)
 	char* buf = (char*)alloca(len * 3 + 3);
 	int32_t esc_len = 0;
 	buf[esc_len++] = '"';
-	if (m_input_codepage == CodePage::ASCII ||
-		m_input_codepage == CodePage::UTF8)
+	if (len > 0)
 	{
-		esc_len += jo_escape_utf8_string(buf + esc_len, s, len);
-	}
-	else
-	{
-#ifdef _WIN32
-		int32_t ucs2len = len;
-		wchar_t* ucs2 = (wchar_t*)alloca(ucs2len * 2 + 1);
-		if (m_input_codepage == CodePage::GBK)
+		if (m_input_codepage == CodePage::ASCII ||
+			m_input_codepage == CodePage::UTF8)
 		{
-			ucs2len = MultiByteToWideChar(936, 0, s, len, ucs2, ucs2len);
-		}
-		else if (m_input_codepage == CodePage::UTF16)
-		{
-		}
-		else if (m_input_codepage == CodePage::BIG5)
-		{
-			ucs2len = MultiByteToWideChar(950, 0, s, len, ucs2, ucs2len);
+			esc_len += jo_escape_utf8_string(buf + esc_len, s, len);
 		}
 		else
-		{ // impossible
-			assert(0);
-		}
-		assert(ucs2len != 0);
-		esc_len += jo_escape_utf16_string(buf + esc_len, ucs2, ucs2len);
+		{
+#ifdef _WIN32
+			int32_t ucs2len = len;
+			wchar_t* ucs2 = (wchar_t*)alloca(ucs2len * 2 + 1);
+			if (m_input_codepage == CodePage::GBK)
+			{
+				ucs2len = MultiByteToWideChar(936, 0, s, len, ucs2, ucs2len);
+			}
+			else if (m_input_codepage == CodePage::UTF16)
+			{
+			}
+			else if (m_input_codepage == CodePage::BIG5)
+			{
+				ucs2len = MultiByteToWideChar(950, 0, s, len, ucs2, ucs2len);
+			}
+			else
+			{ // impossible
+				assert(0);
+			}
+			assert(ucs2len != 0);
+			esc_len += jo_escape_utf16_string(buf + esc_len, ucs2, ucs2len);
 #endif
+		}
 	}
 	buf[esc_len++] = '"';
 	append(buf, esc_len);
