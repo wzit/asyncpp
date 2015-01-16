@@ -77,6 +77,12 @@ int32_t CFG::flush()
 	return 0;
 }
 
+int32_t CFG::flush(const char* cfg_file)
+{
+	cfg_path = cfg_file;
+	return flush();
+}
+
 int32_t CFG::read(const char* cfg_file)
 {
 	int32_t ret = 0;
