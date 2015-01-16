@@ -29,6 +29,7 @@ public:
 	int64_t getInt64(const char* section, const char* key) const; //read int cfg item
 	void setInt64(const char* section, const char* key, int64_t v); //write int cfg item
 	int32_t flush();
+	int32_t flush(const char* cfg_file);
 
 private:
 	int32_t read_next_section(section_t& section, char* line, FILE* f);
