@@ -352,6 +352,12 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 {
 	int ret = 0;
 	struct sockaddr_in addr = {};
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
+	if (ret != 1) return {EINVAL,INVALID_SOCKET}; //@return 0 if ip invalid, -1 if error occur
+
 	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
 	assert(fd != INVALID_SOCKET);
 	if (fd == INVALID_SOCKET)
@@ -361,11 +367,6 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, 
 		reinterpret_cast<char*>(&bReuse), sizeof bReuse);
 	assert(ret == 0);
-
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
-	if (ret != 1) goto L_ERR; //@return 0 if ip invalid, -1 if error occur
 
 	ret = bind(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
 	if (ret != 0) goto L_ERR;
@@ -391,19 +392,16 @@ NetBaseThread::create_connect_socket(const char* ip,
 {
 	int ret = 0;
 	struct sockaddr_in addr = {};
-	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
-	assert(fd != INVALID_SOCKET);
-	if (fd == INVALID_SOCKET)
-		return std::make_pair(GET_SOCK_ERR(), fd);
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
-	if (ret != 1)
-	{ //@return 0 if ip invalid, -1 if error occur
-		ret = GET_SOCK_ERR();
-		goto L_ERR;
-	}
+	if (ret != 1) return {EINVAL,INVALID_SOCKET}; //@return 0 if ip invalid, -1 if error occur
+
+	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
+	assert(fd != INVALID_SOCKET);
+	if (fd == INVALID_SOCKET)
+		return std::make_pair(GET_SOCK_ERR(), fd);
 	for (;;)
 	{
 		ret = connect(fd,
