@@ -59,7 +59,7 @@ char* strtoupper(char* s)
 
 int64_t atoi64(const char *nptr)
 {
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='-')
 	{
 		++nptr;
@@ -75,7 +75,7 @@ int64_t atoi64(const char *nptr)
 uint64_t atou64(const char *nptr)
 {
 	uint64_t r = 0;
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='+') ++nptr;
 	while(isdigit(CHAR_TO_INT(*nptr)))
 	{
@@ -86,7 +86,7 @@ uint64_t atou64(const char *nptr)
 
 int32_t atoi32(const char *nptr)
 {
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='-')
 	{
 		++nptr;
@@ -102,7 +102,7 @@ int32_t atoi32(const char *nptr)
 uint32_t atou32(const char *nptr)
 {
 	uint32_t r = 0;
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='+') ++nptr;
 	while(isdigit(CHAR_TO_INT(*nptr)))
 	{
@@ -113,7 +113,7 @@ uint32_t atou32(const char *nptr)
 
 int64_t strtoi64(const char *nptr, const char **endptr, int32_t base)
 {
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='-')
 	{
 		++nptr;
@@ -138,12 +138,16 @@ uint64_t strtou64(const char *nptr, const char **endptr, int32_t base)
 	uint64_t r = 0;
 	if(2 <= base && base <= 36)
 	{
-		while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+		skip_space(nptr);
 		if(*nptr=='+') ++nptr;
 		while(isalnum(CHAR_TO_INT(*nptr)))
 		{
-			int32_t v = get_hexvalue(*nptr++);
-			if(v<base) r = r*base+v;
+			int32_t v = get_hexvalue(*nptr);
+			if (v < base)
+			{
+				nptr++;
+				r = r*base + v;
+			}
 			else break;
 		}
 	}
@@ -157,7 +161,7 @@ uint64_t strtou64(const char *nptr, const char **endptr, int32_t base)
 
 int32_t strtoi32(const char *nptr, const char **endptr, int32_t base)
 {
-	while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+	skip_space(nptr);
 	if(*nptr=='-')
 	{
 		++nptr;
@@ -182,12 +186,16 @@ uint32_t strtou32(const char *nptr, const char **endptr, int32_t base)
 	uint32_t r = 0;
 	if(2 <= base && base <= 36)
 	{
-		while(isspace(CHAR_TO_INT(*nptr))) ++nptr;
+		skip_space(nptr);
 		if(*nptr=='+') ++nptr;
 		while(isalnum(CHAR_TO_INT(*nptr)))
 		{
-			int32_t v = get_hexvalue(*nptr++);
-			if(v<base) r = r*base+v;
+			int32_t v = get_hexvalue(*nptr);
+			if (v < base)
+			{
+				nptr++;
+				r = r*base + v;
+			}
 			else break;
 		}
 	}
