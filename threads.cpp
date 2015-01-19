@@ -247,7 +247,7 @@ L_READ:
 			process_net_msg(conn);
 #ifdef _ASYNCPP_DEBUG
 			//memory barrier
-			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "XXXXXXXXXXXXXXXX", 16) == 0);
+			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
 #endif
 			conn->m_recv_len = 0;
 			conn->m_header_len = 0;
@@ -264,7 +264,7 @@ L_READ:
 					process_net_msg(conn);
 #ifdef _ASYNCPP_DEBUG
 					//memory barrier
-					assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "XXXXXXXXXXXXXXXX", 16) == 0);
+					assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
 #endif
 					memmove(conn->m_recv_buf,
 						conn->m_recv_buf + package_len, remain_len);
@@ -296,6 +296,10 @@ L_READ:
 		if (conn->m_recv_len > 0)
 		{
 			process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
 		}
 		remove_conn(conn);
 	}

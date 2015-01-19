@@ -339,7 +339,7 @@ public:
 			assert(m_recv_buf != nullptr);
 #ifdef _ASYNCPP_DEBUG
 			//memory barrier
-			memset(m_recv_buf + n + 16, 'X', 16);
+			memcmp(m_recv_buf + n + 16, "ASYNCPPMEMORYBAR", 16);
 #endif
 		}
 	}
