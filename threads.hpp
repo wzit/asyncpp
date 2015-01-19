@@ -153,6 +153,10 @@ public:
 	*/
 	void change_timer(uint32_t timer_id, time_t expire_time)
 	{
+		change_timer_abs(timer_id, g_unix_timestamp + expire_time);
+	}
+	void change_timer_abs(uint32_t timer_id, time_t expire_time)
+	{
 		if (m_timer.is_index_valid(timer_id))
 		{
 			m_timer[timer_id].m_expire_time = expire_time;
