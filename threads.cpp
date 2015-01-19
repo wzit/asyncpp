@@ -245,6 +245,10 @@ L_READ:
 		if (package_len == conn->m_recv_len)
 		{ //recv one package
 			process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
 			conn->m_recv_len = 0;
 			conn->m_header_len = 0;
 			conn->m_body_len = 0;
@@ -254,14 +258,26 @@ L_READ:
 			int32_t remain_len;
 			do
 			{
-				remain_len = conn->m_recv_len - package_len;
-				process_net_msg(conn);
-				memmove(conn->m_recv_buf,
-					conn->m_recv_buf + package_len, remain_len);
-				conn->m_recv_len = remain_len;
-				conn->m_header_len = 0;
-				conn->m_body_len = 0;
-				package_len = frame(conn);
+				if (package_len > 0)
+				{
+					remain_len = conn->m_recv_len - package_len;
+					process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+					//memory barrier
+					assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
+					memmove(conn->m_recv_buf,
+						conn->m_recv_buf + package_len, remain_len);
+					conn->m_recv_len = remain_len;
+					conn->m_header_len = 0;
+					conn->m_body_len = 0;
+					package_len = frame(conn);
+				}
+				else
+				{ // error occur
+					close(conn);
+					break;
+				}
 			} while (package_len <= remain_len);
 		}
 		else
@@ -280,6 +296,10 @@ L_READ:
 		if (conn->m_recv_len > 0)
 		{
 			process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
 		}
 		remove_conn(conn);
 	}

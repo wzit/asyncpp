@@ -335,8 +335,12 @@ public:
 		if (n > m_recv_buf_len)
 		{
 			m_recv_buf_len = n;
-			m_recv_buf = static_cast<char*>(realloc(m_recv_buf, n));
+			m_recv_buf = static_cast<char*>(realloc(m_recv_buf, n + 32));
 			assert(m_recv_buf != nullptr);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			memcmp(m_recv_buf + n + 16, "ASYNCPPMEMORYBAR", 16);
+#endif
 		}
 	}
 	void enlarge_recv_buffer()
@@ -508,7 +512,8 @@ protected:
 	/*
 	 线程内部接口，获取一个消息的长度
 	 当框架能够满足此消息长度后回调process_net_msg(conn)
-	 @return 预期的消息长度
+	 @return >0  预期的消息长度
+	         <=0 出错，连接将被关闭
 	*/
 	virtual int32_t frame(NetConnect* conn);
 
