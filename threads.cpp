@@ -254,14 +254,22 @@ L_READ:
 			int32_t remain_len;
 			do
 			{
-				remain_len = conn->m_recv_len - package_len;
-				process_net_msg(conn);
-				memmove(conn->m_recv_buf,
-					conn->m_recv_buf + package_len, remain_len);
-				conn->m_recv_len = remain_len;
-				conn->m_header_len = 0;
-				conn->m_body_len = 0;
-				package_len = frame(conn);
+				if (package_len > 0)
+				{
+					remain_len = conn->m_recv_len - package_len;
+					process_net_msg(conn);
+					memmove(conn->m_recv_buf,
+						conn->m_recv_buf + package_len, remain_len);
+					conn->m_recv_len = remain_len;
+					conn->m_header_len = 0;
+					conn->m_body_len = 0;
+					package_len = frame(conn);
+				}
+				else
+				{ // error occur
+					close(conn);
+					break;
+				}
 			} while (package_len <= remain_len);
 		}
 		else
