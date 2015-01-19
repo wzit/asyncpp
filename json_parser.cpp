@@ -334,9 +334,11 @@ int32_t JO::parse_value_array(char** p_cursor, uint32_t remain_len)
 		{
 			if (cursor[1] == 'u' && cursor[2] == 'l' && cursor[3] == 'l')
 			{
+				JO jo;
 				cursor += 4;
 				ret = 0;
-				set_type(jo_type_t::null);
+				jo.set_type(jo_type_t::null);
+				m_array_elements->push_back(std::move(jo));
 			}
 			else
 			{
@@ -430,7 +432,7 @@ int32_t JO::parse_value_object(char** p_cursor, uint32_t remain_len)
 			{
 				cursor += 4;
 				ret = 0;
-				set_type(jo_type_t::null);
+				jo.set_type(jo_type_t::null);
 			}
 			else
 			{

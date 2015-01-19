@@ -102,7 +102,7 @@ int32_t CFG::read(const char* cfg_file)
 		return EINVAL;
 	}
 
-	if (!isprint((uint8_t)line[0]))
+	if ((uint8_t)line[0] & 0x80)
 	{
 		if (!((uint8_t)line[0] == 0xEF && (uint8_t)line[1] == 0xBB && (uint8_t)line[2] == 0xBF))
 		{ // utf-8 bom

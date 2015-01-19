@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <utility>
+#include <atomic>
 #include "logger.hpp"
 
 #ifdef _WIN32

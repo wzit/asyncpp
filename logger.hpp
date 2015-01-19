@@ -1,6 +1,7 @@
 #ifndef _LOGGER_HPP_
 #define _LOGGER_HPP_
 
+#include <atomic>
 #include <stdio.h>
 #include <stdint.h>
 #include <thread>
@@ -40,6 +41,67 @@
 #endif
 #endif
 
+namespace asyncpp
+{
+
+class SpinLock
+{
+public:
+	SpinLock() : m_lock()
+	{
+	}
+	~SpinLock()
+	{
+	}
+	SpinLock(const SpinLock& r) = delete;
+	SpinLock& operator=(const SpinLock& r) = delete;
+public:
+	//block until obtain the lock
+	void lock()
+	{
+		while (m_lock.test_and_set())
+		{
+#ifdef _WIN32
+			Sleep(1);
+#else
+			usleep(1);
+#endif
+		}
+	}
+
+	//return true if success to get the lock, false if failed
+	bool trySpinLock()
+	{
+		return !m_lock.test_and_set();
+	}
+
+	void unlock()
+	{
+		m_lock.clear();
+	}
+private:
+	volatile std::atomic_flag m_lock;
+};
+
+class ScopeSpinLock{
+public:
+	ScopeSpinLock(SpinLock& lock)
+		: m_plock(&lock)
+	{
+		m_plock->lock();
+	}
+	~ScopeSpinLock()
+	{
+		m_plock->unlock();
+	}
+	ScopeSpinLock(const ScopeSpinLock&) = delete;
+	ScopeSpinLock& operator=(const ScopeSpinLock& r) = delete;
+private:
+	SpinLock* m_plock;
+};
+
+} //end of namespace asyncpp
+
 const int LOGGER_LINE_SIZE = 4096;
 enum e_logger_level_t
 {
@@ -50,17 +112,22 @@ enum e_logger_level_t
 	LOGGER_WARN = 5,
 	LOGGER_ERROR = 6,
 	LOGGER_FATAL = 7,
-	LOGGER_NULL = 8,
+	LOGGER_NONE = 8,
 };
 
 class Logger
 {
 public:
-	int m_fd;
+	volatile int m_fd;
 	int32_t m_level;
-
+	uint32_t m_filesize;
+	uint32_t m_filesizelimit;
+	int32_t m_filenumlimit;
+	asyncpp::SpinLock m_lock;
+	std::string m_filepath;
 public:
 	int32_t log(const char* buf, uint32_t l);
+	int32_t load_cfg(const char* cfg_path);
 };
 
 extern Logger* logger;
@@ -78,7 +145,7 @@ if (LOGGER_##logger_level >= logger->m_level)\
 	logger_update_time_string(); \
 	_lg_l = snprintf(_lg_buf, LOGGER_LINE_SIZE, "[" #logger_level "] %s [%s:%u: %s %u] " fmt "\n", logger_time_string_buffer, _lg_pfile, line, func, THREADID, ##__VA_ARGS__); \
 	if(_lg_l>0) logger->log(_lg_buf,_lg_l<LOGGER_LINE_SIZE?_lg_l:LOGGER_LINE_SIZE-1); \
-}\
+}
 
 #define logger_trace(logger, fmt, ...) _logger_wrapper(logger, TRACE, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
 #define logger_debug(logger, fmt, ...) _logger_wrapper(logger, DEBUG, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
