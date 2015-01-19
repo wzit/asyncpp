@@ -245,6 +245,10 @@ L_READ:
 		if (package_len == conn->m_recv_len)
 		{ //recv one package
 			process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "XXXXXXXXXXXXXXXX", 16) == 0);
+#endif
 			conn->m_recv_len = 0;
 			conn->m_header_len = 0;
 			conn->m_body_len = 0;
@@ -258,6 +262,10 @@ L_READ:
 				{
 					remain_len = conn->m_recv_len - package_len;
 					process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+					//memory barrier
+					assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "XXXXXXXXXXXXXXXX", 16) == 0);
+#endif
 					memmove(conn->m_recv_buf,
 						conn->m_recv_buf + package_len, remain_len);
 					conn->m_recv_len = remain_len;

@@ -337,6 +337,10 @@ public:
 			m_recv_buf_len = n;
 			m_recv_buf = static_cast<char*>(realloc(m_recv_buf, n + 32));
 			assert(m_recv_buf != nullptr);
+#ifdef _ASYNCPP_DEBUG
+			//memory barrier
+			memset(m_recv_buf + n + 16, 'X', 16);
+#endif
 		}
 	}
 	void enlarge_recv_buffer()
