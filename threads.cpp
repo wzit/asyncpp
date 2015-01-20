@@ -106,7 +106,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 	{
 	case NET_QUERY_DNS_REQ:
 	{
-		QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
+		QueryDnsCtx* dnsctx = dynamic_cast<QueryDnsCtx*>(msg.m_ctx.obj);
 		dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
 
 		_DEBUGLOG(logger, "query dns result:%d, host:%s, ip:%s", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
