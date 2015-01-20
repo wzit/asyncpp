@@ -29,6 +29,7 @@
 #else
 #define DIR_SEP '/'
 #define THREADID static_cast<uint32_t>(pthread_self())
+#include <unistd.h>
 #endif
 
 #ifndef __FUNCSIG__
