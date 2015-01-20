@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <stdio.h>
 #ifdef __GNUC__
-#include <unistd.h>
 #include <dirent.h>
 #define O_BINARY 0
 #elif defined _WIN32
