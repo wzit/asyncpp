@@ -343,7 +343,7 @@ public:
 			assert(m_recv_buf != nullptr);
 #ifdef _ASYNCPP_DEBUG
 			//memory barrier
-			memcmp(m_recv_buf + n + 16, "ASYNCPPMEMORYBAR", 16);
+			memcpy(m_recv_buf + n + 16, "ASYNCPPMEMORYBAR", 16);
 #endif
 		}
 	}
@@ -416,20 +416,51 @@ struct net_conn_eq
 	{ return val1.m_fd == val2.m_fd; }
 };
 
-class QueryDnsRespCtx : public MsgContext
+class QueryDnsCtx : public MsgContext
 {
 public:
 	int32_t m_ret;
+	int32_t m_seq;
 	thread_pool_id_t m_src_thread_pool_id;
 	thread_id_t m_src_thread_id;
 	uint16_t m_port;
 	char m_ip[MAX_IP];
 
-	QueryDnsRespCtx() = default;
-	virtual ~QueryDnsRespCtx() = default;
+	QueryDnsCtx() = default;
+	virtual ~QueryDnsCtx() = default;
 
-	QueryDnsRespCtx(const QueryDnsRespCtx&) = delete;
-	QueryDnsRespCtx& operator=(const QueryDnsRespCtx&) = delete;
+	QueryDnsCtx(const QueryDnsCtx&) = delete;
+	QueryDnsCtx& operator=(const QueryDnsCtx&) = delete;
+
+};
+
+class AddConnectorCtx : public QueryDnsCtx
+{
+public:
+	uint32_t m_connid;
+
+	AddConnectorCtx() = default;
+	~AddConnectorCtx() = default;
+
+	AddConnectorCtx(const AddConnectorCtx&) = delete;
+	AddConnectorCtx& operator=(const AddConnectorCtx&) = delete;
+};
+
+class AddListenerCtx : public MsgContext
+{
+public:
+	int32_t m_ret;
+	int32_t m_seq;
+	uint32_t m_connid;
+	thread_pool_id_t m_client_thread_pool_id;
+	thread_id_t m_client_thread_id;
+	uint16_t m_port;
+
+	AddListenerCtx() = default;
+	virtual ~AddListenerCtx() = default;
+
+	AddListenerCtx(const AddListenerCtx&) = delete;
+	AddListenerCtx& operator=(const AddListenerCtx&) = delete;
 
 };
 
@@ -439,22 +470,22 @@ enum ReservedThreadMsgType
 	STOP_THREAD,
 
 	NET_CONNECT_HOST_REQ,   //msg.m_buf = host
-							//msg.m_ctx.i64 = port
+							//msg.m_ctx.obj = AddConnectorCtx*
 	NET_CONNECT_HOST_RESP,	//msg.m_buf = host
-							//msg.m_ctx.i64 = ret<<32 | fd
+							//msg.m_ctx.obj = AddConnectorCtx*
 	
 	NET_LISTEN_ADDR_REQ,	//msg.m_buf = ip
-							//msg.m_ctx.i64 = port<<32 | client_thread_pool_id<<16 | client_thread_id
+							//msg.m_ctx.obj = AddListenerCtx*
 	NET_LISTEN_ADDR_RESP,	//msg.m_buf = ip
-							//msg.m_ctx.i64 = ret<<32 | fd
+							//msg.m_ctx.obj = AddListenerCtx*
 	
 	NET_ACCEPT_CLIENT_REQ,  //msg.m_ctx.i64 = fd
 	NET_ACCEPT_CLIENT_RESP,	//response ONLY on ERROR, msg.m_ctx.i64 = ret<<32 | fd
 	
 	NET_QUERY_DNS_REQ,      //msg.m_buf = host
-							//msg.m_ctx.obj = QueryDnsRespCtx*
+							//msg.m_ctx.obj = QueryDnsCtx*
 	NET_QUERY_DNS_RESP,		//msg.m_buf = host
-							//msg.m_ctx.obj = QueryDnsRespCtx*
+							//msg.m_ctx.obj = QueryDnsCtx*
 
 	NET_CLOSE_CONN_REQ,		//msg.m_ctx.i64 = force_close << 32 | conn_id
 	NET_CLOSE_CONN_RESP,	//no response
@@ -802,7 +833,7 @@ public:
 			else
 			{
 				MsgCtx ctx;
-				QueryDnsRespCtx* dnsctx = new QueryDnsRespCtx;
+				QueryDnsCtx* dnsctx = new QueryDnsCtx;
 				dnsctx->m_src_thread_pool_id = msg.m_src_thread_pool_id;
 				dnsctx->m_src_thread_id = msg.m_src_thread_id;
 				dnsctx->m_port = static_cast<uint16_t>(msg.m_ctx.i64);
@@ -835,7 +866,7 @@ public:
 		case NET_QUERY_DNS_RESP:
 		{
 			MsgCtx respctx;
-			QueryDnsRespCtx* dnsctx = dynamic_cast<QueryDnsRespCtx*>(msg.m_ctx.obj);
+			QueryDnsCtx* dnsctx = dynamic_cast<QueryDnsCtx*>(msg.m_ctx.obj);
 			if (dnsctx->m_ret == 0)
 			{
 				const auto& r = create_connect_socket(dnsctx->m_ip, dnsctx->m_port);

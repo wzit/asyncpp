@@ -122,7 +122,7 @@ public:
 	*/
 	bool add_connector(const char* host, uint16_t port,
 		thread_pool_id_t net_thread_pool_id, thread_id_t net_thread_id,
-		BaseThread* sender = nullptr)
+		BaseThread* sender = nullptr, int32_t seq = 0)
 	{
 		ThreadMsg msg;
 		msg.m_type = NET_CONNECT_HOST_REQ;
@@ -179,9 +179,16 @@ public:
 	/********************线程同步********************/
 	bool send_thread_msg(ThreadMsg&& msg, bool force_receiver_thread = false)
 	{
-		return m_thread_pools[msg.m_dst_thread_pool_id]->push_msg(
+		bool ret =  m_thread_pools[msg.m_dst_thread_pool_id]->push_msg(
 			std::move(msg),
 			msg.m_dst_thread_pool_id == 0 ? true : force_receiver_thread);
+		if (!ret)
+		{
+			_WARNLOG(logger, "send thread msg from %hu:%hu to %hu:%hu fail, type:%u",
+				msg.m_src_thread_pool_id, msg.m_src_thread_id,
+				msg.m_dst_thread_pool_id, msg.m_src_thread_id, msg.m_type);
+		}
+		return ret;
 	}
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, const MsgCtx& ctx, MsgContextType ctx_type,
@@ -238,7 +245,11 @@ public:
 				buf, buf_len, buf_type, ctx, ctx_type,
 				req.m_src_thread_pool_id, req.m_src_thread_id, sender, true);
 		}
-		else return false;
+		else
+		{
+			_WARNLOG(logger, "invalid thread msg, type:%u", msg_type);
+			return false;
+		}
 	}
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, const ThreadMsg& req, const BaseThread* sender)
