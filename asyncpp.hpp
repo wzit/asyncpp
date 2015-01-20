@@ -61,10 +61,11 @@ public:
 	@return success/fail
 	*/
 	bool add_listener(thread_id_t global_net_thread_id,
-		const char* ip, uint16_t port, BaseThread* sender = nullptr)
+		const char* ip, uint16_t port,
+		BaseThread* sender = nullptr, int32_t seq = 0)
 	{
 		return add_listener(ip, port,
-			global_net_thread_id, 0, global_net_thread_id, sender);
+			global_net_thread_id, 0, global_net_thread_id, sender, seq);
 	}
 
 	/**
@@ -76,9 +77,10 @@ public:
 	bool add_listener(const char* ip, uint16_t port,
 		thread_id_t global_net_thread_id,
 		thread_pool_id_t client_thread_pool_id, thread_id_t client_thread_id,
-		BaseThread* sender = nullptr)
+		BaseThread* sender = nullptr, int32_t seq = 0)
 	{
 		ThreadMsg msg;
+		auto ctx = new AddListenerCtx;
 		msg.m_type = NET_LISTEN_ADDR_REQ;
 		if (sender != nullptr)
 		{
@@ -91,9 +93,12 @@ public:
 		msg.m_buf = new char[msg.m_buf_len + 1];
 		memcpy(msg.m_buf, ip, msg.m_buf_len + 1);
 		msg.m_buf_type = MsgBufferType::NEW;
-		msg.m_ctx.i64 = (static_cast<uint64_t>(port) << 32)
-			| (static_cast<uint64_t>(client_thread_pool_id) << 16)
-			| static_cast<uint64_t>(client_thread_id);
+		ctx->m_port = port;
+		ctx->m_client_thread_pool_id = client_thread_pool_id;
+		ctx->m_client_thread_id = client_thread_id;
+		ctx->m_seq = seq;
+		msg.m_ctx.obj = ctx;
+		msg.m_ctx_type = MsgContextType::OBJECT;
 
 		return send_thread_msg(std::move(msg));
 	}
@@ -125,6 +130,7 @@ public:
 		BaseThread* sender = nullptr, int32_t seq = 0)
 	{
 		ThreadMsg msg;
+		auto ctx = new AddConnectorCtx;
 		msg.m_type = NET_CONNECT_HOST_REQ;
 		if (sender != nullptr)
 		{
@@ -137,7 +143,10 @@ public:
 		msg.m_buf = new char[msg.m_buf_len + 1];
 		memcpy(msg.m_buf, host, msg.m_buf_len + 1);
 		msg.m_buf_type = MsgBufferType::NEW;
-		msg.m_ctx.i64 = static_cast<uint64_t>(port);
+		ctx->m_seq = seq;
+		ctx->m_port = port;
+		msg.m_ctx.obj = ctx;
+		msg.m_ctx_type = MsgContextType::OBJECT;
 		
 		return send_thread_msg(std::move(msg));
 	}
