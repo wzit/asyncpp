@@ -106,15 +106,33 @@ void DnsThread::process_msg(ThreadMsg& msg)
 	{
 	case NET_QUERY_DNS_REQ:
 	{
-		QueryDnsCtx* dnsctx = dynamic_cast<QueryDnsCtx*>(msg.m_ctx.obj);
-		dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
+		auto dnsctx = (QueryDnsCtx*)msg.m_ctx.obj;
+		uint64_t hashval = time31_bob_mixed_hash_bin(msg.m_buf, msg.m_buf_len);
+		auto it = m_cache.find(hashval);
+		if (it != m_cache.end())
+		{
+			dnsctx->m_ret = 0;
+			assert(it->second.first == msg.m_buf);
+			strncpy(dnsctx->m_ip, it->second.second.c_str(), MAX_IP);
+		}
+		else
+		{
+			dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
+			if (dnsctx->m_ret == 0)
+			{
+				add_timer(3600, 0, hashval);
+				m_cache.insert(std::make_pair(hashval,
+					std::make_pair(msg.m_buf, dnsctx->m_ip)));
+			}
+		}
 
-		_DEBUGLOG(logger, "query dns result:%d, host:%s, ip:%s", dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
+		_DEBUGLOG(logger, "query dns result:%d, host:%s, ip:%s",
+			dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
 
-		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
+		bool bSuccess = get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
-		msg.detach();
+		if (bSuccess) msg.detach();
 	}
 		break;
 	default:
@@ -123,6 +141,21 @@ void DnsThread::process_msg(ThreadMsg& msg)
 			msg.m_src_thread_pool_id, msg.m_src_thread_id,
 			msg.m_dst_thread_pool_id, msg.m_dst_thread_id);
 		break;
+	}
+}
+
+void DnsThread::on_timer(uint32_t timerid, uint32_t type, uint64_t ctx)
+{
+	switch (type)
+	{
+	default:
+	{
+		auto it = m_cache.find(ctx);
+		assert(it != m_cache.end());
+		_TRACELOG(logger, "host:%s, ip:%s expired, remove from cache", it->second.first.c_str(), it->second.second.c_str());
+		m_cache.erase(it);
+		break;
+	}
 	}
 }
 
@@ -686,29 +719,29 @@ void NonblockNetThread::process_msg(ThreadMsg& msg)
 
 void NonblockConnectThread::process_msg(ThreadMsg& msg)
 {
-	int ret = 0;
+	auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
 	switch (msg.m_type)
 	{
 	case NET_CONNECT_HOST_REQ:
 		if (m_conn.m_fd != INVALID_SOCKET)
 		{
-			ret = EINPROGRESS;
+			ctx->m_ret = EINPROGRESS;
 		}
 		else
 		{
 			char ip[MAX_IP];
-			ret = dns_query(msg.m_buf, ip);
-			if (ret == 0)
+			ctx->m_ret = dns_query(msg.m_buf, ip);
+			if (ctx->m_ret == 0)
 			{
-				const auto& r = create_connect_socket(ip,
-					static_cast<uint16_t>(msg.m_ctx.i64));
-				assert(ret == 0);
-				ret = r.first;
+				const auto& r = create_connect_socket(ip, ctx->m_port);
+				assert(r.first == 0);
+				ctx->m_ret = r.first;
+				ctx->m_connid = static_cast<uint32_t>(r.second);
 			}
 		}
 		break;
 	default:
-		ret = EINVAL;
+		ctx->m_ret = EINVAL;
 		_WARNLOG(logger, "recv error msg:%u,"
 			" from %hu:%hu, to %hu:%hu", msg.m_type,
 			msg.m_src_thread_pool_id, msg.m_src_thread_id,
@@ -716,33 +749,38 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 		return;
 		break;
 	}
-	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);
-	get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
+	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
+	bool bSuccess = get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
 		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
-		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
-		MsgContextType::STATIC, msg, this);
-	msg.m_buf = nullptr;
-	msg.m_buf_type = MsgBufferType::STATIC;
+		msg.m_ctx, msg.m_ctx_type, msg, this);
+	if (bSuccess) msg.detach();
 }
 
 void NonblockListenThread::process_msg(ThreadMsg& msg)
 {
-	int ret = 0;
 	switch (msg.m_type)
 	{
 	case NET_LISTEN_ADDR_REQ:
+	{
+		auto ctx = (AddListenerCtx*)msg.m_ctx.obj;
 		if (m_conn.m_fd != INVALID_SOCKET)
 		{
-			ret = EINPROGRESS;
+			ctx->m_ret = EINPROGRESS;
 		}
 		else
 		{
 			const auto& r = create_listen_socket(msg.m_buf,
-				static_cast<uint16_t>(msg.m_ctx.i64 >> 32),
-				static_cast<thread_pool_id_t>(msg.m_ctx.i64 >> 16),
-				static_cast<thread_id_t>(msg.m_ctx.i64));
-			ret = r.first;
+				ctx->m_port, ctx->m_client_thread_pool_id,
+				ctx->m_client_thread_id);
+			ctx->m_ret = r.first;
+			ctx->m_connid = r.second;
 		}
+		_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
+		bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
+			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+			msg.m_ctx, msg.m_ctx_type, msg, this);
+		if (bSuccess) msg.detach();
+	}
 		break;
 	case NET_ACCEPT_CLIENT_RESP:
 		_WARNLOG(logger, "recv accept client resp:%#" PRIx64
@@ -752,7 +790,6 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 		return;
 		break;
 	default:
-		ret = EINVAL;
 		_WARNLOG(logger, "recv error msg:%u,"
 			" from %hu:%hu, to %hu:%hu", msg.m_type,
 			msg.m_src_thread_pool_id, msg.m_src_thread_id,
@@ -760,13 +797,6 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 		return;
 		break;
 	}
-	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ret);
-	get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
-		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
-		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
-		MsgContextType::STATIC, msg, this);
-	msg.m_buf = nullptr;
-	msg.m_buf_type = MsgBufferType::STATIC;
 }
 
 int32_t is_str_ipv4(const char* ipv4str)

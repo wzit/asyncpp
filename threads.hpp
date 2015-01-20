@@ -13,11 +13,11 @@
 #include <thread>
 
 #ifndef _ASYNCPP_THREAD_QUEUE_SIZE
-#define _ASYNCPP_THREAD_QUEUE_SIZE 32
+#define _ASYNCPP_THREAD_QUEUE_SIZE 64
 #endif
 
 #ifndef _ASYNCPP_THREAD_MSG_CACHE_SIZE
-#define _ASYNCPP_THREAD_MSG_CACHE_SIZE 4
+#define _ASYNCPP_THREAD_MSG_CACHE_SIZE 8
 #endif
 
 
@@ -212,8 +212,12 @@ int32_t dns_query(const char* host, char* ip);
 
 class DnsThread : public BaseThread
 {
+private:
+	typedef std::pair<std::string, std::string> CacheDataT;
+	std::unordered_map<uint64_t, CacheDataT> m_cache;
 public:
 	virtual void process_msg(ThreadMsg& msg) override;
+	virtual void on_timer(uint32_t timerid, uint32_t type, uint64_t ctx) override;
 };
 
 /************** Net Connection Info ****************/
@@ -819,74 +823,72 @@ public:
 		case NET_CONNECT_HOST_REQ:
 			if (is_str_ipv4(msg.m_buf))
 			{
-				const auto& r = create_connect_socket(msg.m_buf,
-					static_cast<uint16_t>(msg.m_ctx.i64));
+				auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
+				const auto& r = create_connect_socket(msg.m_buf, ctx->m_port);
 
 				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
-				get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
-					nullptr, 0, MsgBufferType::STATIC,
-					{ static_cast<uint64_t>(r.first) << 32 |
-					static_cast<uint32_t>(r.second) },
-					MsgContextType::STATIC, msg, this);
+				ctx->m_ret = r.first;
+				ctx->m_connid = static_cast<uint32_t>(r.second);
+				bool bSuccess = get_asynframe()->send_resp_msg(
+					NET_CONNECT_HOST_RESP,
+					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+					msg.m_ctx, msg.m_ctx_type, msg, this);
+				if (bSuccess) msg.detach();
 			}
 			else
 			{
-				MsgCtx ctx;
-				QueryDnsCtx* dnsctx = new QueryDnsCtx;
+				auto dnsctx = (QueryDnsCtx*)msg.m_ctx.obj;
 				dnsctx->m_src_thread_pool_id = msg.m_src_thread_pool_id;
 				dnsctx->m_src_thread_id = msg.m_src_thread_id;
-				dnsctx->m_port = static_cast<uint16_t>(msg.m_ctx.i64);
-				ctx.obj = dnsctx;
-				get_asynframe()->send_thread_msg(NET_QUERY_DNS_REQ,
+				bool bSuccess = get_asynframe()->send_thread_msg(NET_QUERY_DNS_REQ,
 					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
-					ctx, MsgContextType::OBJECT,
+					msg.m_ctx, msg.m_ctx_type,
 					dns_thread_pool_id, dns_thread_id, this);
-				msg.m_buf = nullptr;
-				msg.m_buf_type = MsgBufferType::STATIC;
+				if (!bSuccess)
+				{
+					dnsctx->m_ret = EBUSY;
+					bSuccess = get_asynframe()->send_resp_msg(
+						NET_CONNECT_HOST_RESP,
+						msg.m_buf, msg.m_buf_len, msg.m_buf_type,
+						msg.m_ctx, msg.m_ctx_type, msg, this);
+				}
+				if (bSuccess) msg.detach();
 				///TODO: set DNS timeout timer
 			}
 			break;
 		case NET_LISTEN_ADDR_REQ:
 		{
-			const auto& r = create_listen_socket(msg.m_buf,
-				static_cast<uint16_t>(msg.m_ctx.i64 >> 32),
-				static_cast<thread_pool_id_t>(msg.m_ctx.i64 >> 16),
-				static_cast<thread_pool_id_t>(msg.m_ctx.i64));
+			auto ctx = (AddListenerCtx*)msg.m_ctx.obj;
+			const auto& r = create_listen_socket(msg.m_buf, ctx->m_port,
+				ctx->m_client_thread_pool_id, ctx->m_client_thread_id);
+			ctx->m_ret = r.first;
+			ctx->m_connid = static_cast<uint32_t>(r.second);
 
 			_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
-			get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
-				nullptr, 0, MsgBufferType::STATIC,
-				{ static_cast<uint64_t>(r.first) << 32 |
-				static_cast<uint32_t>(r.second) },
-				MsgContextType::STATIC, msg, this);
+			bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
+				nullptr, 0, MsgBufferType::STATIC, msg.m_ctx, msg.m_ctx_type, msg, this);
+			if (bSuccess) msg.detach();
 		}
 			break;
 		case NET_QUERY_DNS_RESP:
 		{
-			MsgCtx respctx;
-			QueryDnsCtx* dnsctx = dynamic_cast<QueryDnsCtx*>(msg.m_ctx.obj);
-			if (dnsctx->m_ret == 0)
+			auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
+			if (ctx->m_ret == 0)
 			{
-				const auto& r = create_connect_socket(dnsctx->m_ip, dnsctx->m_port);
+				const auto& r = create_connect_socket(ctx->m_ip, ctx->m_port);
 
 				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
-				respctx.i64 = static_cast<uint64_t>(r.first) << 32
-					| static_cast<uint32_t>(r.second);
+				ctx->m_ret = r.first;
+				ctx->m_connid = static_cast<uint32_t>(r.second);
 			}
-			else
-			{
-				respctx.i64 = static_cast<uint64_t>(dnsctx->m_ret) << 32
-					| 0xffffffffllu;
-			}
-			get_asynframe()->send_thread_msg(NET_CONNECT_HOST_RESP,
+			bool bSuccess = get_asynframe()->send_thread_msg(NET_CONNECT_HOST_RESP,
 				msg.m_buf, msg.m_buf_len, msg.m_buf_type,
-				respctx, MsgContextType::STATIC, dnsctx->m_src_thread_pool_id,
-				dnsctx->m_src_thread_id, this);
-			msg.m_buf = nullptr;
-			msg.m_buf_type = MsgBufferType::STATIC;
+				msg.m_ctx, msg.m_ctx_type, ctx->m_src_thread_pool_id,
+				ctx->m_src_thread_id, this);
+			if (bSuccess) msg.detach();
 		}
 			break;
 		default:
