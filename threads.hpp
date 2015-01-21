@@ -25,6 +25,18 @@
 #define _ASYNCPP_THREAD_POOL_QUEUE_SIZE 256
 #endif
 
+#ifndef _ASYNCPP_DNS_TIMEOUT
+#define _ASYNCPP_DNS_TIMEOUT 3600 //s
+#endif
+
+#ifndef _ASYNCPP_CONNECT_TIMEOUT
+#define _ASYNCPP_CONNECT_TIMEOUT 3600 //s
+#endif
+
+#ifndef _ASYNCPP_IDLE_TIMEOUT
+#define _ASYNCPP_IDLE_TIMEOUT 3600 //s
+#endif
+
 namespace asyncpp
 {
 
@@ -502,8 +514,21 @@ class NetBaseThread : public BaseThread
 {
 public:
 	SpeedSample<16> m_ss;
+	uint32_t m_dns_timeout;
+	uint32_t m_connect_timeout;
+	uint32_t m_idle_timeout;
+	uint32_t m_sendspeedlimit;
+	uint32_t m_recvspeedlimit;
 public:
-	NetBaseThread() = default;
+	NetBaseThread()
+		: m_ss()
+		, m_dns_timeout(_ASYNCPP_DNS_TIMEOUT)
+		, m_connect_timeout(_ASYNCPP_CONNECT_TIMEOUT)
+		, m_idle_timeout(_ASYNCPP_IDLE_TIMEOUT)
+		, m_sendspeedlimit(-1)
+		, m_recvspeedlimit(-1)
+	{
+	}
 	~NetBaseThread() = default;
 	NetBaseThread(NetBaseThread&) = delete;
 	NetBaseThread& operator=(const NetBaseThread&) = delete;

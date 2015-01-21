@@ -32,7 +32,7 @@ private:
 			{
 				left_child = right_child;
 			}
-			if (data[min_heap[left_child]] < data[heap_idx])
+			if (data[min_heap[left_child]] < data[min_heap[heap_idx]])
 			{
 				min_heap[heap_idx] = min_heap[left_child];
 				data_to_heap[min_heap[heap_idx]] = heap_idx;
@@ -123,9 +123,10 @@ public:
 	{
 		int32_t data_index = min_heap[0];
 		min_heap[0] = min_heap.back();
+		data_to_heap[min_heap[0]] = 0;
 		min_heap.pop_back();
-		if (!min_heap.empty()) shift_down(0);
 		data_to_heap[data_index] = -1;
+		if (!min_heap.empty()) shift_down(0);
 		free_list.push_back(data_index);
 		//return data[data_index];
 	}
