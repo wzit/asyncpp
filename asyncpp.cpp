@@ -1,5 +1,6 @@
 ﻿#include "asyncpp.hpp"
 #include <cassert>
+#include <sys/utime.h>
 
 namespace asyncpp
 {
@@ -78,13 +79,19 @@ void AsyncFrame::start()
 
 	for (;;)
 	{
-		time_t cur_time = time(NULL);
-		if (cur_time != g_unix_timestamp)
-		{
-			g_unix_timestamp = cur_time;
-		}
+#ifdef _WIN32
+		FILETIME ft;
+		GetSystemTimeAsFileTime(&ft);
+		g_us_tick = ((uint64_t)ft.dwHighDateTime << 32 | ft.dwLowDateTime) / 10;
+		g_unix_timestamp = time(NULL);
+#else
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		g_us_tick = (uint64_t)tv.tv_sec*1000*1000 + tv.tv_usec;
+		g_unix_timestamp = tv.tv_sec;
+#endif
 		///TODO:: server manager
-		usleep(10 * 1000);
+		usleep(1000);
 	}
 }
 

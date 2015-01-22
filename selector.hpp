@@ -10,6 +10,9 @@
 #include <cerrno>
 #include <cassert>
 
+namespace asyncpp
+{
+
 enum class NetConnectState : uint8_t
 {
 	NET_CONN_CONNECTED,
@@ -19,6 +22,10 @@ enum class NetConnectState : uint8_t
 	NET_CONN_CLOSED,
 	NET_CONN_ERROR,
 };
+
+enum SELEVENTS {SELIN = 1, SELOUT = 2};
+
+} //end of namespace asyncpp
 
 #ifdef _WIN32
 #pragma warning(disable:4819) //for visual studio
@@ -31,6 +38,7 @@ enum class NetConnectState : uint8_t
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
@@ -143,7 +151,7 @@ public:
 		return epoll_ctl(m_fd, EPOLL_CTL_MOD, fd, &ev);
 	}
 
-	int32_t poll(void* p_thread, uint32_t ms);
+	int32_t poll(void* p_thread, uint32_t mode, uint32_t ms);
 };
 
 } //end of namespace asyncpp
@@ -209,7 +217,7 @@ public:
 	int32_t set_write_event(SOCKET_HANDLE fd){ return 0; }
 	int32_t set_read_write_event(SOCKET_HANDLE fd){ return 0; }
 
-	void poll(void* p_thread, uint32_t ms);
+	void poll(void* p_thread, uint32_t mode, uint32_t ms);
 };
 
 } //end of namespace asyncpp
@@ -229,7 +237,6 @@ class SelSelector
 {
 private:
 	//HANDLE m_fd; //not need
-	enum SELEVENTS{SELIN=1,SELOUT=2};
 	std::unordered_map<SOCKET_HANDLE, uint32_t> m_fds;
 	std::vector<SOCKET_HANDLE> m_removed_fds;
 public:
@@ -284,10 +291,10 @@ public:
 		return 0;
 	}
 
-	int32_t poll(void* p_thread, uint32_t ms);
+	int32_t poll(void* p_thread, uint32_t mode, uint32_t ms);
 };
 
-}
+} //end of namespace asyncpp
 
 #endif
 

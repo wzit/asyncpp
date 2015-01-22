@@ -21,7 +21,8 @@ const int32_t MAX_IPV4 = 16;
 const int32_t MAX_IPV6 = 40;
 const int32_t MAX_IP = MAX_IPV6;
 
-extern volatile time_t g_unix_timestamp;
+extern volatile time_t g_unix_timestamp; //unit:s
+extern volatile uint64_t g_us_tick; //unit:us , precision:ms
 
 #ifdef _ASYNCPP_DEBUG
 #define _TRACELOG(logger, fmt, ...) logger_trace(logger, fmt , ##__VA_ARGS__)
@@ -300,6 +301,7 @@ public:
 		m_total_r_bytes += r_bytes;
 		m_total_w_bytes += w_bytes;
 	}
+	//@return <recv_speed, send_speed>
 	std::pair<uint32_t, uint32_t> get_avg_speed(uint32_t seconds = 5)
 	{
 		int32_t pos = m_pos;
@@ -318,20 +320,28 @@ public:
 		return {static_cast<uint32_t>(r/seconds),static_cast<uint32_t>(w/seconds)};
 	}
 
-	uint32_t get_cur_r_speed(){ return m_r_sample[m_pos]; }
-	uint32_t get_cur_w_speed(){ return m_w_sample[m_pos]; }
+	/*
+	 获取当前速度值，这个值还处于增长中
+	 @return <recv_speed, send_speed>
+	*/
 	std::pair<uint32_t, uint32_t> get_cur_speed()
 	{
-		return{ m_r_sample[m_pos], m_w_sample[m_pos] };
+		return {m_r_sample[m_pos], m_w_sample[m_pos]};
 	}
-
-	uint32_t get_r_speed(){ return m_r_sample[(m_pos + MAX_RANGE - 1) % MAX_RANGE]; }
-	uint32_t get_w_speed(){ return m_w_sample[(m_pos + MAX_RANGE - 1) % MAX_RANGE]; }
+	uint32_t get_cur_r_speed(){return m_r_sample[m_pos];}
+	uint32_t get_cur_w_speed(){return m_w_sample[m_pos];}
+	
+	/*
+	 获取上一秒的速度值，这个值是稳定的
+	 @return <recv_speed, send_speed>
+	*/
 	std::pair<uint32_t, uint32_t> get_speed()
 	{
 		int32_t pos = (m_pos + MAX_RANGE - 1) % MAX_RANGE;
-		return{ m_r_sample[pos], m_w_sample[pos] };
+		return {m_r_sample[pos], m_w_sample[pos]};
 	}
+	uint32_t get_r_speed(){return m_r_sample[(m_pos + MAX_RANGE - 1) % MAX_RANGE];}
+	uint32_t get_w_speed(){return m_w_sample[(m_pos + MAX_RANGE - 1) % MAX_RANGE];}
 };
 
 } //end of namespace asyncpp
