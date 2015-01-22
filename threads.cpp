@@ -146,17 +146,17 @@ void DnsThread::process_msg(ThreadMsg& msg)
 
 void DnsThread::on_timer(uint32_t timerid, uint32_t type, uint64_t ctx)
 {
-	switch (type)
-	{
-	default:
-	{
+	//switch (type)
+	//{
+	//default:
+	//{
 		auto it = m_cache.find(ctx);
 		assert(it != m_cache.end());
 		_TRACELOG(logger, "host:%s, ip:%s expired, remove from cache", it->second.first.c_str(), it->second.second.c_str());
 		m_cache.erase(it);
-		break;
-	}
-	}
+	//	break;
+	//}
+	//}
 }
 
 uint32_t NetBaseThread::do_accept(NetConnect* conn)
@@ -596,7 +596,11 @@ int32_t calc_http_chunked(NetConnect* conn)
 			else
 			{
 				// do NOT support chunk trailer
-				conn->m_recv_len -= pchunkbody - pchunk + strlen("\r\n\r\n");
+				pchunkbody += strlen("\r\n\r\n");
+				if (pchunkbody > end) return conn->m_recv_len + strlen("\r\n");
+				conn->m_recv_len -= pchunkbody - pchunk;
+				memmove(pchunk, pchunkbody, end - pchunkbody);
+				break;
 			}
 		}
 	} while (conn->m_header_len + conn->m_body_len < conn->m_recv_len);

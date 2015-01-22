@@ -509,29 +509,38 @@ enum ReservedThreadMsgType
 	NET_MSG_TYPE_NUMBER
 };
 
+const uint32_t SPEEDUNLIMITED = 3 * 1024 * 1024 * 1024u; //3GB/s
+
 /************** Net Recv & Send Thread ****************/
 class NetBaseThread : public BaseThread
 {
 public:
 	SpeedSample<16> m_ss;
-	uint32_t m_dns_timeout;
-	uint32_t m_connect_timeout;
-	uint32_t m_idle_timeout;
-	uint32_t m_sendspeedlimit;
-	uint32_t m_recvspeedlimit;
+	uint32_t m_dns_timeout; //s
+	uint32_t m_connect_timeout; //s
+	uint32_t m_idle_timeout; //s
+	uint32_t m_sendspeedlimit; //B/s
+	uint32_t m_recvspeedlimit; //B/s
 public:
 	NetBaseThread()
 		: m_ss()
 		, m_dns_timeout(_ASYNCPP_DNS_TIMEOUT)
 		, m_connect_timeout(_ASYNCPP_CONNECT_TIMEOUT)
 		, m_idle_timeout(_ASYNCPP_IDLE_TIMEOUT)
-		, m_sendspeedlimit(-1)
-		, m_recvspeedlimit(-1)
+		, m_sendspeedlimit(SPEEDUNLIMITED)
+		, m_recvspeedlimit(SPEEDUNLIMITED)
 	{
 	}
 	~NetBaseThread() = default;
 	NetBaseThread(NetBaseThread&) = delete;
 	NetBaseThread& operator=(const NetBaseThread&) = delete;
+public:
+	void set_speedlimit(uint32_t sendlimit = SPEEDUNLIMITED,
+		uint32_t recvlimit = SPEEDUNLIMITED)
+	{
+		m_sendspeedlimit = sendlimit;
+		m_recvspeedlimit = recvlimit;
+	}
 public:
 	virtual void run() override;
 public:
@@ -663,7 +672,7 @@ public:
 		else
 		{
 			assert(0);
-			return 0;
+			return EBUSY;
 		}
 	}
 
@@ -716,12 +725,25 @@ public:
 	{
 		if (m_conn.m_fd != INVALID_SOCKET)
 		{
-			uint32_t bytes_recv = on_read_event(&m_conn);
-			uint32_t bytes_sent = on_write_event(&m_conn);
+			uint32_t bytes_recv = 0;
+			uint32_t bytes_sent = 0;
+
+			const auto& s = m_ss.get_cur_speed();
+			if (s.first < m_recvspeedlimit)
+			{
+				bytes_recv = on_read_event(&m_conn);
+			}
+			if (s.second < m_sendspeedlimit)
+			{
+				bytes_sent = on_write_event(&m_conn);
+			}
+
 			m_ss.sample(bytes_recv, bytes_sent);
 			if (m_conn.m_state == NetConnectState::NET_CONN_CLOSED)
 				m_conn.destruct();
+
 			return bytes_sent + bytes_recv;
+
 		}
 		else return 0;
 	}
@@ -923,7 +945,22 @@ public:
 
 	virtual int32_t poll() override
 	{
-		int32_t n = m_selector.poll(reinterpret_cast<void*>(this), 0);
+		uint32_t mode = 0;
+		const auto& s = m_ss.get_cur_speed();
+		if (s.first < m_recvspeedlimit)
+		{
+			mode |= SELIN;
+		}
+		if (s.second < m_sendspeedlimit)
+		{
+			mode |= SELOUT;
+		}
+
+		int32_t n = 0;
+		if (mode)
+		{
+			n = m_selector.poll(reinterpret_cast<void*>(this), mode, 0);
+		}
 
 		if (!m_removed_conns.empty())
 		{ // close conn
