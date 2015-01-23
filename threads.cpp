@@ -211,6 +211,7 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 	if (sockerr == 0)
 	{ //connect success
 		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
+		change_timer(conn->m_timerid, m_idle_timeout);
 		on_connect(conn);
 		return 1;
 	}
@@ -272,6 +273,7 @@ L_READ:
 	{ //recv data
 		_TRACELOG(logger, "socket_fd:%d recv %uB, total:%uB",
 			conn->m_fd, recv_len, conn->m_recv_len);
+		change_timer(conn->m_timerid, m_idle_timeout);
 		bytes_recv += recv_len;
 		conn->m_recv_len += recv_len;
 		int32_t package_len = frame(conn);

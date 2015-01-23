@@ -228,11 +228,9 @@ struct ThreadMsg
 };
 
 /************** Timer Message ****************/
-typedef void(*timer_func_t)(uint32_t timer_id, uint64_t ctx);
-
 struct TimerMsg
 {
-	time_t m_expire_time;
+	uint64_t m_expire_time; //us
 	uint64_t m_ctx;
 	uint32_t m_type;
 
@@ -241,7 +239,7 @@ struct TimerMsg
 	TimerMsg& operator=(const TimerMsg& val) = default;
 	~TimerMsg() = default;
 
-	TimerMsg(time_t expire_time, uint64_t ctx, uint32_t type)
+	TimerMsg(uint64_t expire_time, uint64_t ctx, uint32_t type)
 		: m_expire_time(expire_time), m_ctx(ctx), m_type(type)
 	{
 	}
