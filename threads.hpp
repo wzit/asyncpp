@@ -135,18 +135,18 @@ public:
 	 添加一个一次性定时器
 	 @param wait_time， 多少秒后定时器触发，可以为0(稍后触发)
 	*/
-	uint32_t add_timer(time_t wait_time, uint32_t type, uint64_t ctx)
+	uint32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(g_unix_timestamp + wait_time, ctx, type));
+		return m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
 	}
 
 	/*
-	 使用绝对时间添加一个一次性定时器
-	 @param expire_time， unix_epoch，可以为早于当前时间(稍后触发)
+	 添加一个一次性定时器
+	 @param wait_time_us， 多少微妙后定时器触发，可以为0(稍后触发)，目前最高精度为10ms级别
 	*/
-	uint32_t add_timer_abs(time_t expire_time, uint32_t type, uint64_t ctx)
+	uint32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(expire_time, ctx, type));
+		return m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
 	}
 
 	/*
@@ -163,15 +163,19 @@ public:
 	/*
 	 修改定时器时间
 	*/
-	void change_timer(uint32_t timer_id, time_t expire_time)
-	{
-		change_timer_abs(timer_id, g_unix_timestamp + expire_time);
-	}
-	void change_timer_abs(uint32_t timer_id, time_t expire_time)
+	void change_timer(uint32_t timer_id, uint32_t wait_time)
 	{
 		if (m_timer.is_index_valid(timer_id))
 		{
-			m_timer[timer_id].m_expire_time = expire_time;
+			m_timer[timer_id].m_expire_time = g_us_tick + wait_time * 1000000ull;
+			m_timer.change_priority(timer_id);
+		}
+	}
+	void change_timer_us(uint32_t timer_id, uint32_t wait_time_us)
+	{
+		if (m_timer.is_index_valid(timer_id))
+		{
+			m_timer[timer_id].m_expire_time = wait_time_us;
 			m_timer.change_priority(timer_id);
 		}
 	}
@@ -183,7 +187,7 @@ public:
 	uint32_t timer_check()
 	{
 		uint32_t cnt = 0;
-		time_t cur = g_unix_timestamp;
+		uint64_t cur = g_us_tick;
 		while (!m_timer.empty())
 		{
 			const TimerMsg& front = m_timer.front();
@@ -233,6 +237,12 @@ public:
 };
 
 /************** Net Connection Info ****************/
+enum NetTimerType
+{
+	NetTimeoutTimer = 10000,
+	NetBusyTimer,
+};
+
 enum class NetMsgType : uint8_t
 {
 	CUSTOM_BIN,
@@ -261,6 +271,9 @@ struct NetConnect
 	int32_t m_body_len;
 	NetMsgType m_net_msg_type;
 	SOCKET_HANDLE m_fd;
+	int32_t m_timerid;
+	//int32_t m_busytimerid;
+	//bool m_busy;
 	thread_pool_id_t m_client_thread_pool; //for listen socket only
 	thread_id_t m_client_thread; //for listen socket only
 	NetConnectState m_state;
@@ -275,6 +288,7 @@ public:
 		, m_body_len(0)
 		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(INVALID_SOCKET)
+		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(NetConnectState::NET_CONN_CLOSED)
@@ -290,6 +304,7 @@ public:
 		, m_body_len(0)
 		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
+		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(state)
@@ -305,6 +320,7 @@ public:
 		, m_body_len(0)
 		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
+		, m_timerid(-1)
 		, m_client_thread_pool(client_thread_pool)
 		, m_client_thread(client_thread)
 		, m_state(NetConnectState::NET_CONN_LISTENING)
@@ -541,6 +557,10 @@ public:
 		m_sendspeedlimit = sendlimit;
 		m_recvspeedlimit = recvlimit;
 	}
+	//connect在t秒之后关闭
+	void set_connect_timeout(uint32_t t){m_connect_timeout=t;}
+	//连接上t秒收不到数据后关闭
+	void set_idle_timeout(uint32_t t){m_idle_timeout=t;}
 public:
 	virtual void run() override;
 public:
@@ -697,6 +717,31 @@ public:
 	*/
 	virtual int32_t poll() = 0;
 
+	/*
+	 重写这个函数时，必须在default分支内调用基类on_timer
+	*/
+	virtual void on_timer(uint32_t timerid, uint32_t type, uint64_t ctx) override
+	{
+		switch (type)
+		{
+		case NetTimeoutTimer:
+		{
+			NetConnect* conn = get_conn((uint32_t)ctx);
+			conn->m_timerid = -1;
+			assert(conn != nullptr);
+			on_error(conn, ETIMEDOUT);
+			close(conn);
+		}
+			break;
+		case NetBusyTimer:
+			///TODO: process_net_msg返回busy表示业务繁忙，框架会暂停收包，稍后回调
+			break;
+		default:
+			_WARNLOG(logger, "recv error timer type:%d, timerid:%u, ctx:%" PRIu64, type, timerid, ctx);
+			break;
+		}
+	}
+
 public:
 	/*一般情况下，请勿调用这些函数*/
 	virtual int32_t add_conn(NetConnect* conn) = 0;
@@ -750,6 +795,14 @@ public:
 
 	virtual int32_t add_conn(NetConnect* conn) override
 	{ ///TODO: check m_conn.m_fd
+		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
+		{
+			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
+		}
+		else if (conn->m_state == NetConnectState::NET_CONN_CONNECTING)
+		{
+			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
+		}
 		m_conn = std::move(*conn);
 		return 0;
 	}
@@ -769,6 +822,11 @@ public:
 		{
 			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
+			if (conn->m_timerid >= 0)
+			{
+				del_timer(conn->m_timerid);
+				conn->m_timerid = -1;
+			}
 			on_close(conn);
 		}
 		return 0;
@@ -982,6 +1040,14 @@ public:
 		if (set_sock_nonblock(conn->m_fd) == 0)
 		{
 			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+			if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
+			{
+				conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
+			}
+			else if (conn->m_state == NetConnectState::NET_CONN_CONNECTING)
+			{
+				conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
+			}
 			m_selector.add(conn->m_fd, conn->m_state);
 			m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
 			return 0;
@@ -995,6 +1061,11 @@ public:
 		{
 			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
+			if (conn->m_timerid >= 0)
+			{
+				del_timer(conn->m_timerid);
+				conn->m_timerid = -1;
+			}
 			m_selector.del(conn->m_fd);
 			m_removed_conns.push_back(conn->id());
 			on_close(conn);
