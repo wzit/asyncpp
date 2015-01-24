@@ -87,13 +87,13 @@ int asyncpp_inet_pton(int af, const char* src, void* dst)
 	{
 		auto p = (struct in_addr*)dst;
 		auto pc = (uint8_t*)&(p->s_addr);
-		if (!isdigit(*src)) return 0;
+		if (!isdigit((uint8_t)*src)) return 0;
 		pc[0] = (uint8_t)strtou32(src, &src, 10);
-		if (*src++ != '.' && !isdigit(*src)) return 0;
+		if (*src++ != '.' && !isdigit((uint8_t)*src)) return 0;
 		pc[1] = (uint8_t)strtou32(src, &src, 10);
-		if (*src++ != '.' && !isdigit(*src)) return 0;
+		if (*src++ != '.' && !isdigit((uint8_t)*src)) return 0;
 		pc[2] = (uint8_t)strtou32(src, &src, 10);
-		if (*src++ != '.' && !isdigit(*src)) return 0;
+		if (*src++ != '.' && !isdigit((uint8_t)*src)) return 0;
 		pc[3] = (uint8_t)strtou32(src, &src, 10);
 
 		return 1;
