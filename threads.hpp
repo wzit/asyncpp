@@ -729,8 +729,7 @@ public:
 			NetConnect* conn = get_conn((uint32_t)ctx);
 			conn->m_timerid = -1;
 			assert(conn != nullptr);
-			on_error(conn, ETIMEDOUT);
-			close(conn);
+			if(on_error(conn, ETIMEDOUT) == 0) close(conn);
 		}
 			break;
 		case NetBusyTimer:
