@@ -1,6 +1,5 @@
 ﻿#include "asyncpp.hpp"
 #include <cassert>
-#include <sys/utime.h>
 
 namespace asyncpp
 {
