@@ -557,9 +557,9 @@ public:
 		m_sendspeedlimit = sendlimit;
 		m_recvspeedlimit = recvlimit;
 	}
-	//connect在t秒之后关闭
+	//connect在t秒产生错误ETIMEDOUT
 	void set_connect_timeout(uint32_t t){m_connect_timeout=t;}
-	//连接上t秒收不到数据后关闭
+	//连接上t秒收不到数据后产生错误ETIMEDOUT
 	void set_idle_timeout(uint32_t t){m_idle_timeout=t;}
 public:
 	virtual void run() override;
