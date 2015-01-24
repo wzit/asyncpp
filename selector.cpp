@@ -65,7 +65,7 @@ char* asyncpp_inet_ntop(int af, const void* paddr, char* dst, size_t size)
 			errno = E2BIG;
 			return nullptr;
 		}
-		printf("%hhu.%hhu.%hhu.%hhu", pc[0], pc[1], pc[2], pc[3]);
+		sprintf(dst, "%hhu.%hhu.%hhu.%hhu", pc[0], pc[1], pc[2], pc[3]);
 		return dst;
 	}
 	else if (af == AF_INET6)
