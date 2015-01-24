@@ -1,5 +1,6 @@
 ﻿#include "selector.hpp"
 #include "asyncpp.hpp"
+#include "string_utility.h"
 
 #ifdef __GNUC__
 
@@ -52,6 +53,63 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 #endif
 
 #elif defined(_WIN32)
+
+char* asyncpp_inet_ntop(int af, const void* paddr, char* dst, size_t size)
+{
+	if (af == AF_INET)
+	{
+		auto p = (const struct in_addr*)paddr;
+		auto pc = (const uint8_t*)&(p->s_addr);
+		if (size < 16)
+		{
+			errno = E2BIG;
+			return nullptr;
+		}
+		printf("%hhu.%hhu.%hhu.%hhu", pc[0], pc[1], pc[2], pc[3]);
+		return dst;
+	}
+	else if (af == AF_INET6)
+	{
+		auto p = (const struct in_addr6*)paddr;
+		///TODO:
+		return dst;
+	}
+	else
+	{
+		errno = EAFNOSUPPORT;
+		return nullptr;
+	}
+}
+
+int asyncpp_inet_pton(int af, const char* src, void* dst)
+{
+	if (af == AF_INET)
+	{
+		auto p = (struct in_addr*)dst;
+		auto pc = (uint8_t*)&(p->s_addr);
+		if (!isdigit(*src)) return 0;
+		pc[0] = (uint8_t)strtou32(src, &src, 10);
+		if (*src++ != '.' && !isdigit(*src)) return 0;
+		pc[1] = (uint8_t)strtou32(src, &src, 10);
+		if (*src++ != '.' && !isdigit(*src)) return 0;
+		pc[2] = (uint8_t)strtou32(src, &src, 10);
+		if (*src++ != '.' && !isdigit(*src)) return 0;
+		pc[3] = (uint8_t)strtou32(src, &src, 10);
+
+		return 1;
+	}
+	else if (af == AF_INET6)
+	{
+		auto p = (struct in_addr6*)dst;
+		///TODO:
+		return 0;
+	}
+	else
+	{
+		errno = EAFNOSUPPORT;
+		return -1;
+	}
+}
 
 #ifndef _DISABLE_IOCP
 

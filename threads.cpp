@@ -87,7 +87,7 @@ int32_t dns_query(const char* host, char* ip)
 	else
 	{
 		psin = reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
-		const char* p = inet_ntop(AF_INET,
+		const char* p = asyncpp_inet_ntop(AF_INET,
 			&psin->sin_addr, ip, MAX_IP);
 		if (NULL == p)
 		{
@@ -390,7 +390,7 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
+	ret = asyncpp_inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
 	if (ret != 1) return {EINVAL,INVALID_SOCKET}; //@return 0 if ip invalid, -1 if error occur
 
 	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
@@ -430,7 +430,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	ret = inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
+	ret = asyncpp_inet_pton(AF_INET, ip, reinterpret_cast<void*>(&addr.sin_addr));
 	if (ret != 1) return {EINVAL,INVALID_SOCKET}; //@return 0 if ip invalid, -1 if error occur
 
 	SOCKET_HANDLE fd = create_tcp_socket(nonblock);
