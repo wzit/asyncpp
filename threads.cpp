@@ -205,15 +205,19 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 {
 	int32_t sockerr = -1;
 	socklen_t len = sizeof(sockerr);
-	_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 	getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR,
 		reinterpret_cast<char*>(&sockerr), &len);
+	_TRACELOG(logger, "socket_fd:%d, result:%d", conn->m_fd, sockerr);
 	if (sockerr == 0)
 	{ //connect success
 		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
 		change_timer(conn->m_timerid, m_idle_timeout);
 		on_connect(conn);
 		return 1;
+	}
+	else
+	{
+		if (on_error(conn, sockerr) == 0) close(conn);
 	}
 	return 0;
 }
@@ -445,6 +449,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 		{
 			NetConnect conn(fd);
 			add_conn(&conn);
+			_TRACELOG(logger, "connected, fd:%d", fd);
 			return std::make_pair(0, fd);
 		}
 		else
@@ -454,6 +459,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 			{
 				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
 				add_conn(&conn);
+				_TRACELOG(logger, "would block, fd:%d", fd);
 				return std::make_pair(0, fd);
 			}
 			else if (ret == WSAEINTR/*linux*/)
