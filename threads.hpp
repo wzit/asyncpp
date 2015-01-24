@@ -137,7 +137,9 @@ public:
 	*/
 	uint32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
+		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
+		_TRACELOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
+		return timerid;
 	}
 
 	/*
@@ -146,7 +148,9 @@ public:
 	*/
 	uint32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
 	{
-		return m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
+		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
+		_TRACELOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
+		return timerid;
 	}
 
 	/*
@@ -156,7 +160,12 @@ public:
 	{
 		if (m_timer.is_index_valid(timer_id))
 		{
+			_TRACELOG(logger, "timerid:%u", timer_id);
 			m_timer.remove(timer_id);
+		}
+		else
+		{
+			_INFOLOG(logger, "invalid timerid:%u", timer_id);
 		}
 	}
 
@@ -169,14 +178,24 @@ public:
 		{
 			m_timer[timer_id].m_expire_time = g_us_tick + wait_time * 1000000ull;
 			m_timer.change_priority(timer_id);
+			_TRACELOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timer_id, wait_time, g_us_tick);
+		}
+		else
+		{
+			_INFOLOG(logger, "invalid timerid:%u", timer_id);
 		}
 	}
 	void change_timer_us(uint32_t timer_id, uint32_t wait_time_us)
 	{
 		if (m_timer.is_index_valid(timer_id))
 		{
-			m_timer[timer_id].m_expire_time = wait_time_us;
+			m_timer[timer_id].m_expire_time = g_us_tick + wait_time_us;
 			m_timer.change_priority(timer_id);
+			_TRACELOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timer_id, wait_time_us, g_us_tick);
+		}
+		else
+		{
+			_INFOLOG(logger, "invalid timerid:%u", timer_id);
 		}
 	}
 
