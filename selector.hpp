@@ -71,6 +71,9 @@ const int INVALID_SOCKET = -1;
 #define WSAEINPROGRESS EINPROGRESS
 #define WSAEINTR EINTR
 
+#define asyncpp_inet_ntop(af,paddr,dst,socklen) inet_ntop(af,paddr,dst,socklen)
+#define asyncpp_inet_pton(af,src,dst) inet_pton(af,src,dst)
+
 #ifndef _DISABLE_EPOLL
 
 namespace asyncpp
@@ -173,6 +176,19 @@ public:
 #define MSG_NOSIGNAL 0
 
 #define GET_SOCK_ERR() WSAGetLastError()
+
+/* windows xp has no inet_ntop
+	@return dst on success
+	        nullptr on error
+*/
+char* asyncpp_inet_ntop(int af, const void* paddr, char* dst, size_t size);
+
+/* windows xp has no inet_pton
+	@return 1  on success
+	        0  if src doesn't contain a valid addr
+	        -1 on error
+*/
+int asyncpp_inet_pton(int af, const char* src, void* dst);
 
 #define _DISABLE_IOCP
 

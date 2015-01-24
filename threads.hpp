@@ -358,6 +358,7 @@ public:
 			m_body_len = val.m_body_len;
 			m_net_msg_type = val.m_net_msg_type;
 			m_fd = val.m_fd; val.m_fd = INVALID_SOCKET; //do NOT close fd
+			m_timerid = val.m_timerid; val.m_timerid = -1;
 			m_client_thread_pool = val.m_client_thread_pool;
 			m_client_thread = val.m_client_thread;
 			m_state = val.m_state;
@@ -397,7 +398,7 @@ public:
 		int ret = getsockname(m_fd,
 			reinterpret_cast<struct sockaddr*>(&addr), &len);
 		if (ret != 0) return {std::string(), 0};
-		inet_ntop(addr.sin_family,
+		asyncpp_inet_ntop(addr.sin_family,
 			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
 		return {std::string(ip), be16toh(addr.sin_port)};
 	}
@@ -409,7 +410,7 @@ public:
 		int ret = getpeername(m_fd,
 			reinterpret_cast<struct sockaddr*>(&addr), &len);
 		if (ret != 0) return {std::string(), 0};
-		inet_ntop(addr.sin_family,
+		asyncpp_inet_ntop(addr.sin_family,
 			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
 		return {std::string(ip), be16toh(addr.sin_port)};
 	}
@@ -557,9 +558,9 @@ public:
 		m_sendspeedlimit = sendlimit;
 		m_recvspeedlimit = recvlimit;
 	}
-	//connect在t秒之后关闭
+	//connect在t秒产生错误ETIMEDOUT
 	void set_connect_timeout(uint32_t t){m_connect_timeout=t;}
-	//连接上t秒收不到数据后关闭
+	//连接上t秒收不到数据后产生错误ETIMEDOUT
 	void set_idle_timeout(uint32_t t){m_idle_timeout=t;}
 public:
 	virtual void run() override;
@@ -729,8 +730,7 @@ public:
 			NetConnect* conn = get_conn((uint32_t)ctx);
 			conn->m_timerid = -1;
 			assert(conn != nullptr);
-			on_error(conn, ETIMEDOUT);
-			close(conn);
+			if(on_error(conn, ETIMEDOUT) == 0) close(conn);
 		}
 			break;
 		case NetBusyTimer:
