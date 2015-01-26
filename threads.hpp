@@ -347,16 +347,22 @@ public:
 	}
 	~NetConnect()
 	{
+		destruct();
 		if (m_recv_buf != nullptr) free(m_recv_buf);
-		if (m_fd != INVALID_SOCKET) ::closesocket(m_fd);
 	}
 	void destruct()
 	{
-		m_recv_len = 0;
+		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
 			::closesocket(m_fd);
 			m_fd = INVALID_SOCKET;
+		}
+		while (!m_send_list.empty())
+		{
+			auto& it = m_send_list.front();
+			free_buffer(it.data, it.buf_type);
+			m_send_list.pop();
 		}
 	}
 	NetConnect(const NetConnect&) = delete;
