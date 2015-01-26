@@ -1,6 +1,7 @@
 #ifndef _LOGGER_HPP_
 #define _LOGGER_HPP_
 
+#include <string>
 #include <atomic>
 #include <stdio.h>
 #include <stdint.h>
