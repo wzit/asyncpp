@@ -29,7 +29,13 @@
 
 #else
 #define DIR_SEP '/'
-#define THREADID static_cast<uint32_t>(pthread_self())
+#ifdef __i386__
+#define THREADID (uint32_t)(pthread_self())
+#elif defined __x86_64__
+#define THREADID (uint32_t)(uint64_t)(pthread_self())
+#else
+#error architecture not supported
+#endif
 #include <unistd.h>
 #endif
 
