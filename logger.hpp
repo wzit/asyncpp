@@ -25,7 +25,7 @@
 #endif
 
 #define DIR_SEP '\\'
-#define THREADID static_cast<uint32_t>(GetCurrentThreadId())
+#define THREADID (uint32_t)(GetCurrentThreadId())
 
 #else
 #define DIR_SEP '/'
