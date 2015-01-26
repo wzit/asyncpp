@@ -1,6 +1,7 @@
 ﻿#include "cfg.hpp"
 #include "string_utility.h"
 #include <assert.h>
+#include <errno.h>
 
 static std::string _cfg_empty_string;
 

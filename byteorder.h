@@ -9,6 +9,8 @@
 
 #ifdef __GNUC__
 
+#if defined(linux) || defined(__linux) || defined(__linux__)
+
 #include <endian.h>
 
 #ifndef htobe16
@@ -49,6 +51,62 @@
 #   define le64toh(x) __bswap_64 (x)
 //#  endif
 # endif
+#endif
+
+#elif defined(__FreeBSD__) || defined(__NetBSD__)
+#include <sys/endian.h>
+
+#elif defined(__OpenBSD__)
+#include <sys/types.h>
+#define be16toh(x) betoh16(x)
+#define le16toh(x) letoh16(x)
+
+#define be32toh(x) betoh32(x)
+#define le32toh(x) letoh32(x)
+
+#define be64toh(x) betoh64(x)
+#define le64toh(x) letoh64(x)
+
+#elif defined(__APPLE__) && defined(__MACH__)
+#include <sys/types.h>
+# if BYTE_ORDER == LITTLE_ENDIAN
+#  define htobe16(x) __DARWIN_OSSwapInt16 (x)
+#  define htole16(x) (x)
+#  define be16toh(x) __DARWIN_OSSwapInt16 (x)
+#  define le16toh(x) (x)
+
+#  define htobe32(x) __DARWIN_OSSwapInt32 (x)
+#  define htole32(x) (x)
+#  define be32toh(x) __DARWIN_OSSwapInt32 (x)
+#  define le32toh(x) (x)
+
+//#  if __GLIBC_HAVE_LONG_LONG
+#   define htobe64(x) __DARWIN_OSSwapInt64 (x)
+#   define htole64(x) (x)
+#   define be64toh(x) __DARWIN_OSSwapInt64 (x)
+#   define le64toh(x) (x)
+//#  endif
+
+# else
+#  define htobe16(x) (x)
+#  define htole16(x) __DARWIN_OSSwapInt16 (x)
+#  define be16toh(x) (x)
+#  define le16toh(x) __DARWIN_OSSwapInt16 (x)
+
+#  define htobe32(x) (x)
+#  define htole32(x) __DARWIN_OSSwapInt32 (x)
+#  define be32toh(x) (x)
+#  define le32toh(x) __DARWIN_OSSwapInt32 (x)
+
+//#  if __GLIBC_HAVE_LONG_LONG
+#   define htobe64(x) (x)
+#   define htole64(x) __DARWIN_OSSwapInt64 (x)
+#   define be64toh(x) (x)
+#   define le64toh(x) __DARWIN_OSSwapInt64 (x)
+//#  endif
+# endif
+#else
+#error os not support
 #endif
 
 #elif defined(_WIN32)

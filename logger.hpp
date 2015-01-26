@@ -1,6 +1,7 @@
 #ifndef _LOGGER_HPP_
 #define _LOGGER_HPP_
 
+#include <string>
 #include <atomic>
 #include <stdio.h>
 #include <stdint.h>
@@ -24,11 +25,17 @@
 #endif
 
 #define DIR_SEP '\\'
-#define THREADID static_cast<uint32_t>(GetCurrentThreadId())
+#define THREADID (uint32_t)(GetCurrentThreadId())
 
 #else
 #define DIR_SEP '/'
-#define THREADID static_cast<uint32_t>(pthread_self())
+#ifdef __i386__
+#define THREADID (uint32_t)(pthread_self())
+#elif defined __x86_64__
+#define THREADID (uint32_t)(uint64_t)(pthread_self())
+#else
+#error architecture not supported
+#endif
 #include <unistd.h>
 #endif
 
