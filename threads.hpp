@@ -241,6 +241,25 @@ public:
 		if (it != m_ctxs.end()) return it->second;
 		else return nullptr;
 	}
+	void del_first_thread_ctx(MsgContext* val, bool(*equ)(MsgContext* val, MsgContext* r))
+	{
+		for (auto it = m_ctxs.begin(); it != m_ctxs.end(); ++it)
+		{
+			if (equ(val, it->second))
+			{
+				m_ctxs.erase(it);
+				return;
+			}
+		}
+	}
+	std::pair<uint64_t, MsgContext*> get_first_thread_ctx(MsgContext* val, bool(*equ)(MsgContext* val, MsgContext* r))
+	{
+		for (auto it : m_ctxs)
+		{
+			if (equ(val, it.second)) return it;
+		}
+		return {0,nullptr};
+	}
 };
 
 int32_t dns_query(const char* host, char* ip);
