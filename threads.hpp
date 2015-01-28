@@ -20,7 +20,6 @@
 #define _ASYNCPP_THREAD_MSG_CACHE_SIZE 8
 #endif
 
-
 #ifndef _ASYNCPP_THREAD_POOL_QUEUE_SIZE
 #define _ASYNCPP_THREAD_POOL_QUEUE_SIZE 256
 #endif
@@ -774,7 +773,7 @@ public:
 			NetConnect* conn = get_conn((uint32_t)ctx);
 			conn->m_timerid = -1;
 			assert(conn != nullptr);
-			if(on_error(conn, ETIMEDOUT) == 0) close(conn);
+			if (conn!=nullptr && on_error(conn,ETIMEDOUT)==0) close(conn);
 		}
 			break;
 		case NetBusyTimer:
@@ -864,7 +863,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+			_TRACELOG(logger, "socket_fd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			if (conn->m_timerid >= 0)
 			{
@@ -1103,7 +1102,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+			_TRACELOG(logger, "socket_fd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			if (conn->m_timerid >= 0)
 			{
