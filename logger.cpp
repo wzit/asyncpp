@@ -9,9 +9,10 @@
 #include <errno.h>
 #include <stdio.h>
 #ifdef __GNUC__
-#include <dirent.h>
+#include <locale>
 #define O_BINARY 0
 #elif defined _WIN32
+#include <codecvt>
 #include <direct.h>
 #include <share.h>
 #include <io.h>
@@ -88,7 +89,12 @@ int32_t Logger::load_cfg(const char* cfg_path)
 {
 	int32_t ret = 0;
 	char line[1100];
+#ifdef _WIN32
+	wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> utf16conv;
+	FILE* f = _wfopen(utf16conv.from_bytes(cfg_path).c_str(), L"r");
+#else
 	FILE* f = fopen(cfg_path, "r");
+#endif
 	if (f == nullptr)
 	{
 		printf("load cfg, open %s fail:%d[%s]\n", cfg_path, errno, strerror(errno));

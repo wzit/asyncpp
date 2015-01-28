@@ -2,6 +2,13 @@
 #include "string_utility.h"
 #include <assert.h>
 #include <errno.h>
+#ifdef _WIN32
+#include <codecvt>
+#else
+#include <locale>
+#endif
+
+using namespace std;
 
 static std::string _cfg_empty_string;
 
@@ -59,7 +66,11 @@ void CFG::setInt64(const char* section, const char* key, int64_t v)
 
 int32_t CFG::flush()
 {
+#ifdef _WIN32
+	FILE* f = _wfopen(cfg_path.c_str(), L"w");
+#else
 	FILE* f = fopen(cfg_path.c_str(), "w");
+#endif
 	if (f == nullptr)
 	{
 		printf("flush to file open %s fail%d[%s]\n", cfg_path.c_str(), errno, strerror(errno));
@@ -80,7 +91,12 @@ int32_t CFG::flush()
 
 int32_t CFG::flush(const char* cfg_file)
 {
+#ifdef _WIN32
+	wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> utf16conv;
+	cfg_path = utf16conv.from_bytes(cfg_file);
+#else
 	cfg_path = cfg_file;
+#endif
 	return flush();
 }
 
@@ -88,8 +104,14 @@ int32_t CFG::read(const char* cfg_file)
 {
 	int32_t ret = 0;
 	char line[4100];
+#ifdef _WIN32
+	wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> utf16conv;
+	cfg_path = utf16conv.from_bytes(cfg_file);
+	FILE* f = _wfopen(cfg_path.c_str(), L"r");
+#else
 	cfg_path = cfg_file;
-	FILE* f = fopen(cfg_file, "r");
+	FILE* f = fopen(cfg_path.c_str(), "r");
+#endif
 	if (f == nullptr)
 	{
 		printf("load cfg, open %s fail:%d[%s]\n", cfg_file, errno, strerror(errno));
