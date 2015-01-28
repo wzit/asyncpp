@@ -11,7 +11,11 @@ class CFG
 private:
 	typedef std::unordered_map<std::string, std::string> section_t;
 	std::unordered_map<std::string, section_t> sections;
+#ifdef _WIN32
+	std::wstring cfg_path;
+#else
 	std::string cfg_path;
+#endif
 
 public:
 	CFG() = default;
