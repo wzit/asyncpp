@@ -306,7 +306,6 @@ struct NetConnect
 	int32_t m_recv_buf_len;
 	int32_t m_header_len;
 	int32_t m_body_len;
-	NetMsgType m_net_msg_type;
 	SOCKET_HANDLE m_fd;
 	int32_t m_timerid;
 	//int32_t m_busytimerid;
@@ -314,6 +313,8 @@ struct NetConnect
 	thread_pool_id_t m_client_thread_pool; //for listen socket only
 	thread_id_t m_client_thread; //for listen socket only
 	NetConnectState m_state;
+	NetMsgType m_net_msg_type;
+	uint16_t m_send_queue_limit;
 
 public:
 	NetConnect()
@@ -323,12 +324,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(INVALID_SOCKET)
 		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(NetConnectState::NET_CONN_CLOSED)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	NetConnect(SOCKET_HANDLE fd,
@@ -339,12 +341,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
 		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(state)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	NetConnect(SOCKET_HANDLE fd,
@@ -355,12 +358,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
 		, m_timerid(-1)
 		, m_client_thread_pool(client_thread_pool)
 		, m_client_thread(client_thread)
 		, m_state(NetConnectState::NET_CONN_LISTENING)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	~NetConnect()
@@ -410,6 +414,8 @@ public:
 	}
 
 public:
+	void set_send_queue_limit(uint16_t limit){m_send_queue_limit=limit;}
+	uint16_t get_send_queue_limit(){return m_send_queue_limit;}
 	void enlarge_recv_buffer(int32_t n)
 	{
 		if (n > m_recv_buf_len)
@@ -473,7 +479,7 @@ public: //private
 	int32_t send(char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		if (m_send_list.size() < 64)
+		if (m_send_list.size() < m_send_queue_limit)
 		{
 			m_send_list.push({ msg, msg_len, 0, buf_type });
 			return 0;
