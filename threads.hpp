@@ -301,6 +301,7 @@ struct SendMsgType
 struct NetConnect
 {
 	std::queue<SendMsgType> m_send_list;
+	uint64_t m_ctx;
 	char* m_recv_buf;
 	int32_t m_recv_len;
 	int32_t m_recv_buf_len;
@@ -319,6 +320,7 @@ struct NetConnect
 public:
 	NetConnect()
 		: m_send_list()
+		, m_ctx(0)
 		, m_recv_buf(nullptr)
 		, m_recv_len(0)
 		, m_recv_buf_len(0)
@@ -336,6 +338,7 @@ public:
 	NetConnect(SOCKET_HANDLE fd,
 		NetConnectState state = NetConnectState::NET_CONN_CONNECTED)
 		: m_send_list()
+		, m_ctx(0)
 		, m_recv_buf(nullptr)
 		, m_recv_len(0)
 		, m_recv_buf_len(0)
@@ -353,6 +356,7 @@ public:
 	NetConnect(SOCKET_HANDLE fd,
 		thread_pool_id_t client_thread_pool, thread_id_t client_thread)
 		: m_send_list()
+		, m_ctx(0)
 		, m_recv_buf(nullptr)
 		, m_recv_len(0)
 		, m_recv_buf_len(0)
@@ -414,8 +418,10 @@ public:
 	}
 
 public:
+	void set_ctx(uint64_t ctx){m_ctx=ctx;}
+	uint64_t get_ctx()const{return m_ctx;}
 	void set_send_queue_limit(uint16_t limit){m_send_queue_limit=limit;}
-	uint16_t get_send_queue_limit(){return m_send_queue_limit;}
+	uint16_t get_send_queue_limit()const{return m_send_queue_limit;}
 	void enlarge_recv_buffer(int32_t n)
 	{
 		if (n > m_recv_buf_len)
@@ -439,7 +445,7 @@ public:
 		m_recv_len = 0;
 	}
 	uint32_t id(){ return static_cast<uint32_t>(m_fd); }
-	std::pair<std::string, uint16_t> get_addr()
+	std::pair<std::string, uint16_t> get_addr() const
 	{
 		char ip[MAX_IP] = {};
 		struct sockaddr_in addr;
@@ -451,7 +457,7 @@ public:
 			reinterpret_cast<void*>(&addr.sin_addr), ip, MAX_IP);
 		return {std::string(ip), be16toh(addr.sin_port)};
 	}
-	std::pair<std::string, uint16_t> get_peer_addr()
+	std::pair<std::string, uint16_t> get_peer_addr() const
 	{
 		char ip[MAX_IP] = {};
 		struct sockaddr_in addr;
