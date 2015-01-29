@@ -508,10 +508,7 @@ uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 	switch (conn->m_state)
 	{
 	case NetConnectState::NET_CONN_CONNECTED:
-		if (!conn->m_send_list.empty())
-		{
-			return do_send(conn);
-		}
+		if (!conn->m_send_list.empty()) return do_send(conn);
 		break;
 	case NetConnectState::NET_CONN_LISTENING:
 		//ignore
@@ -522,14 +519,8 @@ uint32_t NetBaseThread::on_write_event(NetConnect* conn)
 	case NetConnectState::NET_CONN_CLOSING:
 	{
 		uint32_t bytes_sent = 0;
-		if (!conn->m_send_list.empty())
-		{
-			bytes_sent = do_send(conn);
-		}
-		if (conn->m_send_list.empty())
-		{
-			remove_conn(conn);
-		}
+		if (!conn->m_send_list.empty()) bytes_sent = do_send(conn);
+		if (conn->m_send_list.empty()) remove_conn(conn);
 		return bytes_sent;
 	}
 		break;
@@ -725,7 +716,7 @@ void NonblockNetThread::process_msg(ThreadMsg& msg)
 	_DEBUGLOG(logger, "reject client:%" PRIu64 ", result:%d", msg.m_ctx.i64, ret);
 	get_asynframe()->send_resp_msg(NET_ACCEPT_CLIENT_RESP,
 		nullptr, 0, MsgBufferType::STATIC,
-		{ static_cast<uint64_t>(ret) << 32 | m_conn.m_fd },
+		{static_cast<uint64_t>(ret) << 32 | m_conn.m_fd},
 		MsgContextType::STATIC, msg, this);
 }
 
@@ -775,18 +766,11 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 	case NET_LISTEN_ADDR_REQ:
 	{
 		auto ctx = (AddListenerCtx*)msg.m_ctx.obj;
-		if (m_conn.m_fd != INVALID_SOCKET)
-		{
-			ctx->m_ret = EINPROGRESS;
-		}
-		else
-		{
-			const auto& r = create_listen_socket(msg.m_buf,
-				ctx->m_port, ctx->m_client_thread_pool_id,
-				ctx->m_client_thread_id);
-			ctx->m_ret = r.first;
-			ctx->m_connid = r.second;
-		}
+		const auto& r = create_listen_socket(msg.m_buf,
+			ctx->m_port, ctx->m_client_thread_pool_id,
+			ctx->m_client_thread_id);
+		ctx->m_ret = r.first;
+		ctx->m_connid = r.second;
 		_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
 		bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,

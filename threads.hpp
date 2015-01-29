@@ -306,7 +306,6 @@ struct NetConnect
 	int32_t m_recv_buf_len;
 	int32_t m_header_len;
 	int32_t m_body_len;
-	NetMsgType m_net_msg_type;
 	SOCKET_HANDLE m_fd;
 	int32_t m_timerid;
 	//int32_t m_busytimerid;
@@ -314,6 +313,8 @@ struct NetConnect
 	thread_pool_id_t m_client_thread_pool; //for listen socket only
 	thread_id_t m_client_thread; //for listen socket only
 	NetConnectState m_state;
+	NetMsgType m_net_msg_type;
+	uint16_t m_send_queue_limit;
 
 public:
 	NetConnect()
@@ -323,12 +324,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(INVALID_SOCKET)
 		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(NetConnectState::NET_CONN_CLOSED)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	NetConnect(SOCKET_HANDLE fd,
@@ -339,12 +341,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
 		, m_timerid(-1)
 		, m_client_thread_pool(INVALID_THREAD_POOL_ID)
 		, m_client_thread(INVALID_THREAD_ID)
 		, m_state(state)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	NetConnect(SOCKET_HANDLE fd,
@@ -355,12 +358,13 @@ public:
 		, m_recv_buf_len(0)
 		, m_header_len(0)
 		, m_body_len(0)
-		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
 		, m_fd(fd)
 		, m_timerid(-1)
 		, m_client_thread_pool(client_thread_pool)
 		, m_client_thread(client_thread)
 		, m_state(NetConnectState::NET_CONN_LISTENING)
+		, m_net_msg_type(NetMsgType::CUSTOM_BIN)
+		, m_send_queue_limit(64)
 	{
 	}
 	~NetConnect()
@@ -410,6 +414,8 @@ public:
 	}
 
 public:
+	void set_send_queue_limit(uint16_t limit){m_send_queue_limit=limit;}
+	uint16_t get_send_queue_limit(){return m_send_queue_limit;}
 	void enlarge_recv_buffer(int32_t n)
 	{
 		if (n > m_recv_buf_len)
@@ -473,7 +479,7 @@ public: //private
 	int32_t send(char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		if (m_send_list.size() < 64)
+		if (m_send_list.size() < m_send_queue_limit)
 		{
 			m_send_list.push({ msg, msg_len, 0, buf_type });
 			return 0;
@@ -614,10 +620,7 @@ public:
 	void on_error_event(NetConnect* conn)
 	{
 		int32_t ret = on_error(conn, GET_SOCK_ERR());
-		if (ret == 0)
-		{
-			remove_conn(conn);
-		}
+		if (ret == 0) remove_conn(conn);
 	}
 protected:
 	/*一般情况下，请勿调用这些函数*/
@@ -698,7 +701,7 @@ public:
 	/*
 	 强制关闭连接
 	*/
-	virtual void force_close(NetConnect* conn){ remove_conn(conn); }
+	virtual void force_close(NetConnect* conn){remove_conn(conn);}
 
 	/*
 	 强制关闭连接，对端将会收到RST
@@ -787,8 +790,8 @@ public:
 
 public:
 	/*一般情况下，请勿调用这些函数*/
-	virtual int32_t add_conn(NetConnect* conn) = 0;
-	virtual int32_t remove_conn(NetConnect* conn) = 0;
+	virtual void add_conn(NetConnect* conn) = 0;
+	virtual void remove_conn(NetConnect* conn) = 0;
 	virtual void set_read_event(NetConnect* conn) = 0;
 	virtual void set_write_event(NetConnect* conn) = 0;
 	virtual void set_rdwr_event(NetConnect* conn) = 0;
@@ -836,8 +839,10 @@ public:
 		else return 0;
 	}
 
-	virtual int32_t add_conn(NetConnect* conn) override
-	{ ///TODO: check m_conn.m_fd
+	virtual void add_conn(NetConnect* conn) override
+	{
+		assert(conn->m_fd != INVALID_SOCKET);
+		assert(m_conn.m_fd == INVALID_SOCKET);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
 			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
@@ -847,7 +852,6 @@ public:
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
 		}
 		m_conn = std::move(*conn);
-		return 0;
 	}
 	virtual void set_read_event(NetConnect* conn) override{}
 	virtual void set_write_event(NetConnect* conn) override{}
@@ -858,7 +862,7 @@ public:
 		if (conn_id == m_conn.id()) return &m_conn;
 		else return nullptr;
 	}
-	virtual int32_t remove_conn(NetConnect* conn) override
+	virtual void remove_conn(NetConnect* conn) override
 	{
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
@@ -872,7 +876,6 @@ public:
 			}
 			on_close(conn);
 		}
-		return 0;
 	}
 
 protected:
@@ -908,6 +911,8 @@ protected:
 		create_connect_socket(const char* ip, uint16_t port,
 		bool nonblock = true) override
 	{
+		if (m_conn.m_fd != INVALID_SOCKET)
+			return {EINPROGRESS,INVALID_SOCKET};
 		const auto& r = NetBaseThread::create_connect_socket(ip, port, false);
 		if (r.first == 0 && nonblock)
 		{
@@ -934,6 +939,8 @@ protected:
 		thread_pool_id_t client_thread_pool, thread_id_t client_thread,
 		bool nonblock = true) override
 	{
+		if (m_conn.m_fd != INVALID_SOCKET)
+			return {EINPROGRESS,INVALID_SOCKET};
 		return NetBaseThread::create_listen_socket(ip, port,
 			client_thread_pool, client_thread, nonblock);
 	}
@@ -1075,29 +1082,25 @@ public:
 		return n;
 	}
 public:
-	virtual int32_t add_conn(NetConnect* conn) override
+	virtual void add_conn(NetConnect* conn) override
 	{
 		assert(conn->m_body_len != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
-		if (set_sock_nonblock(conn->m_fd) == 0)
+		set_sock_nonblock(conn->m_fd);
+		_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
-			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
-			if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
-			{
-				conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
-			}
-			else if (conn->m_state == NetConnectState::NET_CONN_CONNECTING)
-			{
-				conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
-			}
-			m_selector.add(conn->m_fd, conn->m_state);
-			m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
-			return 0;
+			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
 		}
-		else return 1;
+		else if (conn->m_state == NetConnectState::NET_CONN_CONNECTING)
+		{
+			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
+		}
+		m_selector.add(conn->m_fd, conn->m_state);
+		m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
 	}
-	virtual int32_t remove_conn(NetConnect* conn) override
+	virtual void remove_conn(NetConnect* conn) override
 	{
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
@@ -1113,11 +1116,10 @@ public:
 			m_removed_conns.push_back(conn->id());
 			on_close(conn);
 		}
-		return 0;
 	}
-	virtual int32_t remove_conn(uint32_t conn_id)
+	virtual void remove_conn(uint32_t conn_id)
 	{
-		return remove_conn(&m_conns[conn_id]);
+		remove_conn(&m_conns[conn_id]);
 	}
 	virtual void set_read_event(NetConnect* conn) override
 	{
