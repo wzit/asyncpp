@@ -6,6 +6,7 @@
 #include "syncqueue.hpp"
 #include "selector.hpp"
 #include "byteorder.h"
+#include <stdio.h>
 #include <vector>
 #include <queue>
 #include <tuple>
