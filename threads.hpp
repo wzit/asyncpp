@@ -134,23 +134,25 @@ public:
 	/*
 	 添加一个一次性定时器
 	 @param wait_time， 多少秒后定时器触发，可以为0(稍后触发)
+	 @return timerid: [0, INT32_MAX], always success except memory out
 	*/
-	uint32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
+	int32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
 		_TRACELOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
-		return timerid;
+		return (int32_t)timerid;
 	}
 
 	/*
 	 添加一个一次性定时器
 	 @param wait_time_us， 多少微妙后定时器触发，可以为0(稍后触发)，目前最高精度为10ms级别
+	 @return timerid: [0, INT32_MAX], always success except memory out
 	*/
-	uint32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
+	int32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
 		_TRACELOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
-		return timerid;
+		return (int32_t)timerid;
 	}
 
 	/*
@@ -403,17 +405,19 @@ public:
 		if (&val != this)
 		{
 			m_send_list = std::move(val.m_send_list);
+			m_ctx = val.m_ctx;
 			m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
 			m_recv_len = val.m_recv_len;
 			m_recv_buf_len = val.m_recv_buf_len;
 			m_header_len = val.m_header_len;
 			m_body_len = val.m_body_len;
-			m_net_msg_type = val.m_net_msg_type;
 			m_fd = val.m_fd; val.m_fd = INVALID_SOCKET; //do NOT close fd
 			m_timerid = val.m_timerid; val.m_timerid = -1;
 			m_client_thread_pool = val.m_client_thread_pool;
 			m_client_thread = val.m_client_thread;
 			m_state = val.m_state;
+			m_net_msg_type = val.m_net_msg_type;
+			m_send_queue_limit = val.m_send_queue_limit;
 		}
 		return *this;
 	}
