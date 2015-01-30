@@ -1,6 +1,7 @@
 ﻿#include "selector.hpp"
 #include "asyncpp.hpp"
 #include "string_utility.h"
+#include <stdio.h>
 
 #ifdef __GNUC__
 

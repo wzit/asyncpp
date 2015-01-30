@@ -75,9 +75,9 @@ public:
 	pqueue(const pqueue& v) = delete;
 	pqueue& operator=(const pqueue& v) = delete;
 
-	bool empty() const { return min_heap.empty(); }
+	bool empty()const{return min_heap.empty();}
 
-	size_t size() const { return min_heap.size(); }
+	uint32_t size()const{return min_heap.size();}
 
 	void reserve(int32_t n)
 	{
