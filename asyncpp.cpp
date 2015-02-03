@@ -9,6 +9,10 @@ HANDLE AsyncFrame::m_iocp = INVALID_HANDLE_VALUE;
 #endif
 
 AsyncFrame::AsyncFrame()
+	: m_thread_pools()
+	, m_ctxs()
+	, m_ctxs_mtx()
+	, m_end(false)
 {
 	/* global thread pool */
 	m_thread_pools.push_back(new ThreadPool(this, 0));
@@ -76,7 +80,7 @@ void AsyncFrame::start()
 		}
 	}
 
-	for (;;)
+	while (!m_end)
 	{
 #ifdef _WIN32
 		FILETIME ft;
@@ -92,6 +96,14 @@ void AsyncFrame::start()
 		///TODO:: server manager
 		usleep(1000);
 	}
+
+	usleep(100 * 1000);
+	exit(0);
+}
+
+void AsyncFrame::stop()
+{
+	m_end = true;
 }
 
 } //end of namespace asyncpp
