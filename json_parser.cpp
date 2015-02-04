@@ -433,6 +433,7 @@ int32_t JO::parse_value_object(char** p_cursor, uint32_t remain_len)
 				cursor += 4;
 				ret = 0;
 				jo.set_type(jo_type_t::null);
+				m_object_members->insert(std::make_pair(key, std::move(jo)));
 			}
 			else
 			{
