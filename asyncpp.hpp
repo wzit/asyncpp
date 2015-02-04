@@ -12,6 +12,7 @@ private:
 	std::vector<ThreadPool*> m_thread_pools;
 	std::unordered_map<uint64_t, MsgContext*> m_ctxs;
 	std::mutex m_ctxs_mtx;
+	volatile bool m_end;
 #ifdef _WIN32
 public:
 	static HANDLE m_iocp;
@@ -297,6 +298,7 @@ public:
 	void start_thread(BaseThread* t);
 	void start_thread(thread_pool_id_t t_pool_id, thread_id_t t_id);
 	void start(); //block
+	void stop();
 
 public:
 	void add_ctx(uint64_t seq, MsgContext* ctx)
