@@ -14,6 +14,15 @@ AsyncFrame::AsyncFrame()
 	, m_ctxs_mtx()
 	, m_end(false)
 {
+	g_unix_timestamp = time(nullptr);
+#ifdef _WIN32
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+	g_us_tick = ((uint64_t)ft.dwHighDateTime << 32 | ft.dwLowDateTime) / 10;
+#else
+	g_us_tick = g_unix_timestamp * 1000 * 1000;
+#endif
+
 	/* global thread pool */
 	m_thread_pools.push_back(new ThreadPool(this, 0));
 
