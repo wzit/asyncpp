@@ -94,7 +94,7 @@ void AsyncFrame::start()
 		g_unix_timestamp = tv.tv_sec;
 #endif
 		///TODO:: server manager
-		usleep(1000);
+		usleep(10 * 1000);
 	}
 
 	usleep(100 * 1000);
