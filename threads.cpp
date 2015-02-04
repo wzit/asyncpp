@@ -45,7 +45,7 @@ void BaseThread::run()
 		uint32_t msg_cnt = check_timer_and_thread_msg();
 		if (msg_cnt == 0)
 		{
-			usleep(10 * 1000);
+			usleep(50 * 1000);
 		}
 	}
 }
@@ -678,7 +678,7 @@ void NetBaseThread::run()
 		uint32_t thread_msg_cnt = check_timer_and_thread_msg();
 		if (thread_msg_cnt == 0 && net_msg_cnt == 0)
 		{
-			usleep(10 * 1000);
+			usleep(50 * 1000);
 		}
 	}
 }
