@@ -539,6 +539,15 @@ char* JO::str() const
 	else return NULL;
 }
 
+char* JO::str2() const
+{
+	if (m_type != jo_type_t::null)
+	{
+		return m_jo_value;
+	}
+	else return "";
+}
+
 const JO& JO::operator[](const char* key) const
 {
 	assert(m_type == jo_type_t::object);
