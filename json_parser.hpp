@@ -45,7 +45,8 @@ public:
 public:
 	int32_t i32() const;
 	int64_t i64() const;
-	char* str() const;
+	char* str() const; //非string类型返回NULL
+	char* str2() const; //非string类型转为string，null类型返回空字符串
 	double dbl() const;
 	bool b() const;
 	jo_type_t type() const;
