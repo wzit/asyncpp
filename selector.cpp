@@ -149,8 +149,10 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	SOCKET_HANDLE max_fd = 0;
 	fd_set read_fds;
 	fd_set write_fds;
+	fd_set except_fds;
 	FD_ZERO(&read_fds);
 	FD_ZERO(&write_fds);
+	FD_ZERO(&except_fds);
 
 	if (!m_removed_fds.empty())
 	{ //清除已经关闭了的连接
@@ -162,20 +164,23 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	{
 		if (mode&SELIN && it->second&SELIN)
 		{
-			++n;
+			//++n;
 			if (it->first > max_fd) max_fd = it->first;
 			FD_SET(it->first, &read_fds);
 		}
 		if (mode&SELOUT && it->second&SELOUT)
 		{
-			++n;
+			//++n;
 			if (it->first > max_fd) max_fd = it->first;
 			FD_SET(it->first, &write_fds);
 		}
+
+		++n;
+		FD_SET(it->first, &except_fds);
 	}
 	if (n == 0) goto L_RET;
 
-	n = select(max_fd + 1, &read_fds, &write_fds, nullptr, &tv);
+	n = select(max_fd + 1, &read_fds, &write_fds, &except_fds, &tv);
 	if (n > 0)
 	{
 		for (auto it = m_fds.begin(); it != m_fds.end(); ++it)
@@ -188,6 +193,11 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			if (FD_ISSET(it->first, &write_fds))
 			{
 				bytes_sent += t->on_write_event(conn);
+			}
+			if (FD_ISSET(it->first, &except_fds))
+			{
+				++bytes_recv;
+				t->on_error_event(conn);
 			}
 		}
 	}
