@@ -1,7 +1,7 @@
 libname=asyncpp
-CFLAGS=
+CFLAGS=-static-libstdc++
 release-static:
-	g++ ${CFLAGS} -std=c++11 -O2 -c -DNDEBUG -Wall *.c *.cpp
+	g++ ${CFLAGS} -std=c++11 -O3 -c -DNDEBUG -Wall *.c *.cpp
 	ar rc lib${libname}.a *.o
 	ranlib lib${libname}.a
 	rm *.o
@@ -11,7 +11,7 @@ debug-static:
 	ranlib lib${libname}d.a
 	rm *.o
 release-shared:
-	g++ ${CFLAGS} -std=c++11 -O2 -shared -fPIC -DNDEBUG -Wall *.c *.cpp -olib${libname}.so
+	g++ ${CFLAGS} -std=c++11 -O3 -shared -fPIC -DNDEBUG -Wall *.c *.cpp -olib${libname}.so
 debug-shared:
 	g++ ${CFLAGS} -std=c++11 -O1 -g -shared -fPIC -D_DEBUG -D_ASYNCPP_DEBUG -Wall *.c *.cpp -olib${libname}d.so	
 debug: debug-static debug-shared
