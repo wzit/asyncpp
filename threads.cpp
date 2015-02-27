@@ -217,6 +217,7 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 	}
 	else
 	{
+		//assert(0);
 		if (on_error(conn, sockerr) == 0) close(conn);
 	}
 	return 0;
@@ -421,7 +422,9 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 
 L_ERR:
 	ret = GET_SOCK_ERR();
+	assert(ret != 0);
 	::closesocket(fd);
+	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
 }
 
@@ -455,6 +458,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 		else
 		{
 			ret = GET_SOCK_ERR();
+			assert(ret != 0);
 			if (ret == WSAEWOULDBLOCK/*win*/ || ret == WSAEINPROGRESS/*linux*/)
 			{
 				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
@@ -471,6 +475,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 	}
 L_ERR:
 	::closesocket(fd);
+	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
 }
 
