@@ -632,8 +632,13 @@ public:
 	{
 		int32_t ret = GET_SOCK_ERR();
 		assert(ret != 0);
-		ret = on_error(conn, ret);
-		if (ret == 0) remove_conn(conn);
+		_WARNLOG(logger, "sockfd:%d, error:%d[%s], state:%d", conn->m_fd, ret, strerror(errno), conn->m_state);
+		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
+			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
+		{
+			ret = on_error(conn, ret);
+			if (ret == 0) remove_conn(conn);
+		}
 	}
 protected:
 	/*一般情况下，请勿调用这些函数*/
@@ -874,6 +879,7 @@ public:
 		{
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
 		}
+		_TRACELOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
 		m_conn = std::move(*conn);
 	}
 	virtual void set_read_event(NetConnect* conn) override{}
