@@ -630,8 +630,15 @@ public:
 	uint32_t on_write_event(NetConnect* conn);
 	void on_error_event(NetConnect* conn)
 	{
-		int32_t ret = on_error(conn, GET_SOCK_ERR());
-		if (ret == 0) remove_conn(conn);
+		int32_t ret = GET_SOCK_ERR();
+		assert(ret != 0);
+		_WARNLOG(logger, "sockfd:%d, error:%d[%s], state:%d", conn->m_fd, ret, strerror(errno), conn->m_state);
+		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
+			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
+		{
+			ret = on_error(conn, ret);
+			if (ret == 0) remove_conn(conn);
+		}
 	}
 protected:
 	/*一般情况下，请勿调用这些函数*/
@@ -785,9 +792,18 @@ public:
 		case NetTimeoutTimer:
 		{
 			NetConnect* conn = get_conn((uint32_t)ctx);
-			conn->m_timerid = -1;
 			assert(conn != nullptr);
-			if (conn!=nullptr && on_error(conn,ETIMEDOUT)==0) close(conn);
+			if (conn != nullptr)
+			{
+				conn->m_timerid = -1;
+
+				if (conn->m_state != NetConnectState::NET_CONN_CLOSING
+					&& conn->m_state != NetConnectState::NET_CONN_CLOSED
+					&& on_error(conn, ETIMEDOUT) == 0)
+				{
+					close(conn);
+				}
+			}
 		}
 			break;
 		case NetBusyTimer:
@@ -854,6 +870,7 @@ public:
 	{
 		assert(conn->m_fd != INVALID_SOCKET);
 		assert(m_conn.m_fd == INVALID_SOCKET);
+		assert(conn->m_fd != m_conn.m_fd);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
 			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
@@ -862,6 +879,7 @@ public:
 		{
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
 		}
+		_TRACELOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
 		m_conn = std::move(*conn);
 	}
 	virtual void set_read_event(NetConnect* conn) override{}
@@ -1095,9 +1113,10 @@ public:
 public:
 	virtual void add_conn(NetConnect* conn) override
 	{
-		assert(conn->m_body_len != INVALID_SOCKET);
+		assert(conn->m_fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
+		assert(m_conns.find(conn->m_fd) == m_conns.end());
 		set_sock_nonblock(conn->m_fd);
 		_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)

@@ -120,7 +120,9 @@ public:
 			assert(0);
 		}
 		ev.data.fd = fd;
-		return epoll_ctl(m_fd, EPOLL_CTL_ADD, fd, &ev);
+		int32_t ret = epoll_ctl(m_fd, EPOLL_CTL_ADD, fd, &ev);
+		assert(ret == 0);
+		return ret;
 	}
 	int32_t del(SOCKET_HANDLE fd)
 	{
@@ -263,6 +265,7 @@ public:
 	int32_t add(SOCKET_HANDLE fd, NetConnectState state)
 	{
 		assert(fd != INVALID_SOCKET);
+		assert(m_fds.find(fd) == m_fds.end());
 		if (state == NetConnectState::NET_CONN_CONNECTED)
 		{
 			m_fds.insert(std::make_pair(fd, SELIN | SELOUT));
