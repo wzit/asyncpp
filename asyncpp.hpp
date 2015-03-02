@@ -277,11 +277,15 @@ public:
 
 	bool is_msg_queue_full(thread_pool_id_t t_pool_id, thread_id_t t_id)
 	{
-		return get_thread(t_pool_id, t_id)->full();
+		return t_id == INVALID_THREAD_ID
+			? is_msg_queue_full(t_pool_id)
+			: get_thread(t_pool_id, t_id)->full();
 	}
 	uint32_t get_queued_msg_number(thread_pool_id_t t_pool_id, thread_id_t t_id)
 	{
-		return get_thread(t_pool_id, t_id)->get_queued_msg_number();
+		return t_id == INVALID_THREAD_ID
+			? get_queued_msg_number(t_pool_id)
+			: get_thread(t_pool_id, t_id)->get_queued_msg_number();
 	}
 	bool is_msg_queue_full(thread_pool_id_t t_pool_id)
 	{
