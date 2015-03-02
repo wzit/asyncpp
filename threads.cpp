@@ -171,11 +171,17 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			int32_t ret = on_accept(fd);
 			if (ret == 0)
 			{
-				get_asynframe()->send_thread_msg(NET_ACCEPT_CLIENT_REQ,
-					nullptr, 0, MsgBufferType::STATIC,
-					{ static_cast<uint64_t>(fd) }, MsgContextType::STATIC,
+				bool bSuccess = get_asynframe()->send_thread_msg(
+					NET_ACCEPT_CLIENT_REQ, nullptr, 0, MsgBufferType::STATIC,
+					{static_cast<uint64_t>(fd)}, MsgContextType::STATIC,
 					conn->m_client_thread_pool, conn->m_client_thread,
 					this, false);
+				if (!bSuccess)
+				{
+					_WARNLOG(logger, "queue full, close socket_fd:%d", fd);
+					::closesocket(fd);
+					break;
+				}
 			}
 			else
 			{

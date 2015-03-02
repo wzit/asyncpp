@@ -198,6 +198,13 @@ public:
 				msg.m_src_thread_pool_id, msg.m_src_thread_id,
 				msg.m_dst_thread_pool_id, msg.m_src_thread_id, msg.m_type);
 		}
+		else
+		{
+			_TRACELOG(logger, "send thread msg from %hu:%hu to %hu:%hu, type:%u, dst queued msg cnt:%u",
+				msg.m_src_thread_pool_id, msg.m_src_thread_id,
+				msg.m_dst_thread_pool_id, msg.m_src_thread_id, msg.m_type,
+				get_queued_msg_number(msg.m_dst_thread_pool_id, msg.m_src_thread_id));
+		}
 		return ret;
 	}
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
