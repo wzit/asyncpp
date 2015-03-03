@@ -65,7 +65,10 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 	*p_cur = 0;
 	m_path_hash_value = time33_hash(m_path);
 
-	return append_params_inplace(p_cur + 1, len - (p_cur + 1 - url));
+	uint32_t parsed_len = p_cur - url;
+	if (parsed_len < len)
+		return append_params_inplace(p_cur + 1, len - parsed_len - 1);
+	else return 0;
 }
 
 int32_t HttpQueryStringParser::append_params_inplace(
