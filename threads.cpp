@@ -199,7 +199,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 			{
 				on_error_event(conn);
-				_INFOLOG(logger, "socket_fd:%d accept error:%d", conn->m_fd, errcode);
+				_WARNLOG(logger, "socket_fd:%d accept error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
 			break;
 		}
@@ -256,7 +256,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			{
 				///TODO: drop msg if fail several times
 				on_error_event(conn);
-				_INFOLOG(logger, "socket_fd:%d error:%d", conn->m_fd, errcode);
+				_WARNLOG(logger, "socket_fd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
 			return bytes_sent;
 		}
@@ -355,7 +355,7 @@ L_READ:
 		if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 		{
 			on_error_event(conn);
-			_INFOLOG(logger, "socket_fd:%d error:%d", conn->m_fd, errcode);
+			_WARNLOG(logger, "socket_fd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 		}
 	}
 
