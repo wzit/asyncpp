@@ -631,12 +631,15 @@ public:
 	void on_error_event(NetConnect* conn)
 	{
 		int32_t ret = GET_SOCK_ERR();
-		assert(ret != 0);
-		_WARNLOG(logger, "sockfd:%d, error:%d[%s], state:%d", conn->m_fd, ret, strerror(errno), conn->m_state);
+		int32_t sockerr = 0;
+		socklen_t len = sizeof(sockerr);
+		getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&sockerr), &len);
+		assert(sockerr != 0);
+		_WARNLOG(logger, "sockfd:%d, error:%d, errno:%d[%s], state:%d", conn->m_fd, sockerr, ret, strerror(errno), conn->m_state);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
 			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			ret = on_error(conn, ret);
+			ret = on_error(conn, sockerr);
 			if (ret == 0) remove_conn(conn);
 		}
 	}
