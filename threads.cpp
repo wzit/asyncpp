@@ -117,6 +117,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		}
 		else
 		{
+			*dnsctx->m_ip = 0;
 			dnsctx->m_ret = dns_query(msg.m_buf, dnsctx->m_ip);
 			if (dnsctx->m_ret == 0)
 			{
