@@ -1023,7 +1023,7 @@ public:
 					NET_CONNECT_HOST_RESP,
 					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 					msg.m_ctx, msg.m_ctx_type, msg, this);
-				if (bSuccess) msg.detach();
+				msg.detach();
 			}
 			else
 			{
@@ -1049,6 +1049,8 @@ public:
 					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 					msg.m_ctx, msg.m_ctx_type,
 					dns_thread_pool_id, dns_thread_id, this);
+				msg.detach();
+
 				if (!bSuccess)
 				{
 					dnsctx->m_ret = EBUSY;
@@ -1062,7 +1064,6 @@ public:
 					if (msg.m_buf_type != MsgBufferType::STATIC) free(buf);
 					delete ctx.obj;
 				}
-				if (bSuccess) msg.detach();
 				///TODO: set DNS timeout timer
 			}
 			break;
@@ -1078,7 +1079,7 @@ public:
 
 			bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 				nullptr, 0, MsgBufferType::STATIC, msg.m_ctx, msg.m_ctx_type, msg, this);
-			if (bSuccess) msg.detach();
+			msg.detach();
 		}
 			break;
 		case NET_QUERY_DNS_RESP:
@@ -1097,7 +1098,7 @@ public:
 				msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 				msg.m_ctx, msg.m_ctx_type, ctx->m_src_thread_pool_id,
 				ctx->m_src_thread_id, this);
-			if (bSuccess) msg.detach();
+			msg.detach();
 		}
 			break;
 		default:
