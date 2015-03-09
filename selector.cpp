@@ -71,7 +71,7 @@ char* asyncpp_inet_ntop(int af, const void* paddr, char* dst, size_t size)
 	}
 	else if (af == AF_INET6)
 	{
-		auto p = (const struct in_addr6*)paddr;
+		//auto p = (const struct in_addr6*)paddr;
 		///TODO:
 		return dst;
 	}
@@ -101,7 +101,7 @@ int asyncpp_inet_pton(int af, const char* src, void* dst)
 	}
 	else if (af == AF_INET6)
 	{
-		auto p = (struct in_addr6*)dst;
+		//auto p = (struct in_addr6*)dst;
 		///TODO:
 		return 0;
 	}
