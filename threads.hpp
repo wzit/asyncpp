@@ -522,8 +522,8 @@ public:
 	QueryDnsCtx() = default;
 	virtual ~QueryDnsCtx() = default;
 
-	QueryDnsCtx(const QueryDnsCtx&) = delete;
-	QueryDnsCtx& operator=(const QueryDnsCtx&) = delete;
+	QueryDnsCtx(const QueryDnsCtx&) = default;
+	QueryDnsCtx& operator=(const QueryDnsCtx&) = default;
 
 };
 
@@ -535,8 +535,8 @@ public:
 	AddConnectorCtx() = default;
 	~AddConnectorCtx() = default;
 
-	AddConnectorCtx(const AddConnectorCtx&) = delete;
-	AddConnectorCtx& operator=(const AddConnectorCtx&) = delete;
+	AddConnectorCtx(const AddConnectorCtx&) = default;
+	AddConnectorCtx& operator=(const AddConnectorCtx&) = default;
 };
 
 class AddListenerCtx : public MsgContext
@@ -552,8 +552,8 @@ public:
 	AddListenerCtx() = default;
 	virtual ~AddListenerCtx() = default;
 
-	AddListenerCtx(const AddListenerCtx&) = delete;
-	AddListenerCtx& operator=(const AddListenerCtx&) = delete;
+	AddListenerCtx(const AddListenerCtx&) = default;
+	AddListenerCtx& operator=(const AddListenerCtx&) = default;
 
 };
 
@@ -1027,7 +1027,22 @@ public:
 			}
 			else
 			{
-				auto dnsctx = (QueryDnsCtx*)msg.m_ctx.obj;
+				char* buf = nullptr;
+				MsgCtx ctx = {0};
+				auto dnsctx = (AddConnectorCtx*)msg.m_ctx.obj;
+
+				/*复制msg.m_buf*/
+				if (msg.m_buf_type == MsgBufferType::STATIC) buf = msg.m_buf;
+				else
+				{
+					buf = (char*)malloc(msg.m_buf_len);
+					memcpy(buf, msg.m_buf, msg.m_buf_len);
+				}
+
+				/*复制msg.m_ctx*/
+				AddConnectorCtx* respctx = new AddConnectorCtx(*dnsctx);
+				ctx.obj = respctx;
+
 				dnsctx->m_src_thread_pool_id = msg.m_src_thread_pool_id;
 				dnsctx->m_src_thread_id = msg.m_src_thread_id;
 				bool bSuccess = get_asynframe()->send_thread_msg(NET_QUERY_DNS_REQ,
@@ -1039,8 +1054,13 @@ public:
 					dnsctx->m_ret = EBUSY;
 					bSuccess = get_asynframe()->send_resp_msg(
 						NET_CONNECT_HOST_RESP,
-						msg.m_buf, msg.m_buf_len, msg.m_buf_type,
-						msg.m_ctx, msg.m_ctx_type, msg, this);
+						buf, msg.m_buf_len, MsgBufferType::MALLOC,
+						ctx, MsgContextType::OBJECT, msg, this);
+				}
+				else
+				{
+					if (msg.m_buf_type != MsgBufferType::STATIC) free(buf);
+					delete ctx.obj;
 				}
 				if (bSuccess) msg.detach();
 				///TODO: set DNS timeout timer

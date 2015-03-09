@@ -208,7 +208,7 @@ public:
 		return ret;
 	}
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
-		MsgBufferType buf_type, const MsgCtx& ctx, MsgContextType ctx_type,
+		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
 		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
 		const BaseThread* sender, bool force_receiver_thread = false)
 	{
@@ -252,7 +252,7 @@ public:
 		}
 	}
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
-		MsgBufferType buf_type, const MsgCtx& ctx, MsgContextType ctx_type,
+		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
 		const ThreadMsg& req, const BaseThread* sender)
 	{
 		if (req.m_src_thread_pool_id != INVALID_THREAD_POOL_ID
@@ -265,6 +265,8 @@ public:
 		else
 		{
 			_WARNLOG(logger, "invalid thread msg, type:%u", msg_type);
+			free_buffer(buf, buf_type);
+			free_context(ctx, ctx_type);
 			return false;
 		}
 	}
