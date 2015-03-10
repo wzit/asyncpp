@@ -133,7 +133,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		bool bSuccess = get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
-		if (bSuccess) msg.detach();
+		msg.detach();
 	}
 		break;
 	default:
@@ -768,7 +768,7 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 	bool bSuccess = get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
 		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 		msg.m_ctx, msg.m_ctx_type, msg, this);
-	if (bSuccess) msg.detach();
+	msg.detach();
 }
 
 void NonblockListenThread::process_msg(ThreadMsg& msg)
@@ -787,7 +787,7 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 		bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
-		if (bSuccess) msg.detach();
+		msg.detach();
 	}
 		break;
 	case NET_ACCEPT_CLIENT_RESP:
