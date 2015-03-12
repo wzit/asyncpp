@@ -130,7 +130,7 @@ void DnsThread::process_msg(ThreadMsg& msg)
 		_DEBUGLOG(logger, "query dns result:%d, host:%s, ip:%s",
 			dnsctx->m_ret, msg.m_buf, dnsctx->m_ip);
 
-		bool bSuccess = get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
+		get_asynframe()->send_resp_msg(NET_QUERY_DNS_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
 		msg.detach();
@@ -188,6 +188,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			{
 				if (ret == 1)
 				{ //reject and close conn
+					_INFOLOG(logger, "reject and close socket_fd:%d", fd);
 					::closesocket(fd);
 				}
 			}
@@ -430,6 +431,7 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 L_ERR:
 	ret = GET_SOCK_ERR();
 	assert(ret != 0);
+	_WARNLOG(logger, "socket_fd:%d error:%d[%s]", fd, ret, strerror(ret));
 	::closesocket(fd);
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
@@ -477,11 +479,12 @@ NetBaseThread::create_connect_socket(const char* ip,
 			{
 				continue;
 			}
-			else goto L_ERR;
+			else break;
 		}
 	}
-L_ERR:
+
 	::closesocket(fd);
+	_WARNLOG(logger, "socket_fd:%d error:%d[%s]", fd, ret, strerror(ret));
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
 }
@@ -765,7 +768,7 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 		break;
 	}
 	_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
-	bool bSuccess = get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
+	get_asynframe()->send_resp_msg(NET_CONNECT_HOST_RESP,
 		msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 		msg.m_ctx, msg.m_ctx_type, msg, this);
 	msg.detach();
@@ -784,7 +787,7 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 		ctx->m_ret = r.first;
 		ctx->m_connid = r.second;
 		_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
-		bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
+		get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 			msg.m_ctx, msg.m_ctx_type, msg, this);
 		msg.detach();

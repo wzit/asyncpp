@@ -37,6 +37,10 @@
 #define _ASYNCPP_IDLE_TIMEOUT 3600 //s
 #endif
 
+#ifdef _WIN32
+#pragma warning(disable:4100)
+#endif
+
 namespace asyncpp
 {
 
@@ -384,6 +388,7 @@ public:
 		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
+			_INFOLOG(logger, "close socket_fd:%d, state:%d", m_fd, m_state);
 			::closesocket(m_fd);
 			m_fd = INVALID_SOCKET;
 		}
@@ -1019,7 +1024,7 @@ public:
 
 				ctx->m_ret = r.first;
 				ctx->m_connid = static_cast<uint32_t>(r.second);
-				bool bSuccess = get_asynframe()->send_resp_msg(
+				get_asynframe()->send_resp_msg(
 					NET_CONNECT_HOST_RESP,
 					msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 					msg.m_ctx, msg.m_ctx_type, msg, this);
@@ -1077,7 +1082,7 @@ public:
 
 			_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
-			bool bSuccess = get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
+			get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 				nullptr, 0, MsgBufferType::STATIC, msg.m_ctx, msg.m_ctx_type, msg, this);
 			msg.detach();
 		}
@@ -1094,7 +1099,7 @@ public:
 				ctx->m_ret = r.first;
 				ctx->m_connid = static_cast<uint32_t>(r.second);
 			}
-			bool bSuccess = get_asynframe()->send_thread_msg(NET_CONNECT_HOST_RESP,
+			get_asynframe()->send_thread_msg(NET_CONNECT_HOST_RESP,
 				msg.m_buf, msg.m_buf_len, msg.m_buf_type,
 				msg.m_ctx, msg.m_ctx_type, ctx->m_src_thread_pool_id,
 				ctx->m_src_thread_id, this);
