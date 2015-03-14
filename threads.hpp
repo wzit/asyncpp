@@ -143,7 +143,7 @@ public:
 	int32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
-		_TRACELOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
+		_DEBUGLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
 		return (int32_t)timerid;
 	}
 
@@ -155,7 +155,7 @@ public:
 	int32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
-		_TRACELOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
+		_DEBUGLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
 		return (int32_t)timerid;
 	}
 
@@ -166,7 +166,7 @@ public:
 	{
 		if (m_timer.is_index_valid(timer_id))
 		{
-			_TRACELOG(logger, "timerid:%u", timer_id);
+			_DEBUGLOG(logger, "timerid:%u", timer_id);
 			m_timer.remove(timer_id);
 		}
 		else
@@ -184,7 +184,7 @@ public:
 		{
 			m_timer[timer_id].m_expire_time = g_us_tick + wait_time * 1000000ull;
 			m_timer.change_priority(timer_id);
-			_TRACELOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timer_id, wait_time, g_us_tick);
+			_DEBUGLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timer_id, wait_time, g_us_tick);
 		}
 		else
 		{
@@ -197,7 +197,7 @@ public:
 		{
 			m_timer[timer_id].m_expire_time = g_us_tick + wait_time_us;
 			m_timer.change_priority(timer_id);
-			_TRACELOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timer_id, wait_time_us, g_us_tick);
+			_DEBUGLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timer_id, wait_time_us, g_us_tick);
 		}
 		else
 		{
@@ -224,7 +224,7 @@ public:
 				m_timer.pop();
 
 				++cnt;
-				_TRACELOG(logger, "run timerid:%d, type:%u, ctx:%" PRIu64, timer_id, type, ctx);
+				_DEBUGLOG(logger, "run timerid:%d, type:%u, ctx:%" PRIu64, timer_id, type, ctx);
 				on_timer(timer_id, type, ctx);
 			}
 			else break;
@@ -388,7 +388,7 @@ public:
 		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
-			_INFOLOG(logger, "close socket_fd:%d, state:%d", m_fd, m_state);
+			_INFOLOG(logger, "close sockfd:%d, state:%d", m_fd, m_state);
 			::closesocket(m_fd);
 			m_fd = INVALID_SOCKET;
 		}
@@ -723,7 +723,7 @@ public:
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
 			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+			_DEBUGLOG(logger, "sockfd:%d", conn->m_fd);
 			set_write_event(conn);
 			conn->m_state = NetConnectState::NET_CONN_CLOSING;
 		}
@@ -892,7 +892,7 @@ public:
 		{
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
 		}
-		_TRACELOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
+		_DEBUGLOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
 		m_conn = std::move(*conn);
 	}
 	virtual void set_read_event(NetConnect* conn) override{}
@@ -909,7 +909,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_TRACELOG(logger, "socket_fd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
+			_DEBUGLOG(logger, "sockfd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			if (conn->m_timerid >= 0)
 			{
@@ -1152,7 +1152,7 @@ public:
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
 		assert(m_conns.find(conn->m_fd) == m_conns.end());
 		set_sock_nonblock(conn->m_fd);
-		_TRACELOG(logger, "socket_fd:%d", conn->m_fd);
+		_DEBUGLOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
 			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
@@ -1169,7 +1169,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_TRACELOG(logger, "socket_fd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
+			_DEBUGLOG(logger, "sockfd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			if (conn->m_timerid >= 0)
 			{

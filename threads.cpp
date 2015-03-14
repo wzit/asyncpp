@@ -153,7 +153,7 @@ void DnsThread::on_timer(uint32_t timerid, uint32_t type, uint64_t ctx)
 	//{
 		auto it = m_cache.find(ctx);
 		assert(it != m_cache.end());
-		_TRACELOG(logger, "host:%s, ip:%s expired, remove from cache", it->second.first.c_str(), it->second.second.c_str());
+		_DEBUGLOG(logger, "host:%s, ip:%s expired, remove from cache", it->second.first.c_str(), it->second.second.c_str());
 		m_cache.erase(it);
 	//	break;
 	//}
@@ -168,7 +168,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 		SOCKET_HANDLE fd = accept(conn->m_fd, nullptr, nullptr);
 		if (fd != INVALID_SOCKET)
 		{
-			_TRACELOG(logger, "socket_fd:%d accept %d", conn->m_fd, fd);
+			_DEBUGLOG(logger, "sockfd:%d accept %d", conn->m_fd, fd);
 			int32_t ret = on_accept(fd);
 			if (ret == 0)
 			{
@@ -179,7 +179,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 					this, false);
 				if (!bSuccess)
 				{
-					_WARNLOG(logger, "queue full, close socket_fd:%d", fd);
+					_WARNLOG(logger, "queue full, close sockfd:%d", fd);
 					::closesocket(fd);
 					break;
 				}
@@ -188,11 +188,10 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			{
 				if (ret == 1)
 				{ //reject and close conn
-					_INFOLOG(logger, "reject and close socket_fd:%d", fd);
+					_INFOLOG(logger, "reject and close sockfd:%d", fd);
 					::closesocket(fd);
 				}
 			}
-			_TRACELOG(logger, "socket_fd:%d", fd);
 			++accept_cnt;
 		}
 		else
@@ -201,7 +200,7 @@ uint32_t NetBaseThread::do_accept(NetConnect* conn)
 			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 			{
 				on_error_event(conn);
-				_WARNLOG(logger, "socket_fd:%d accept error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+				_WARNLOG(logger, "sockfd:%d accept error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
 			break;
 		}
@@ -215,7 +214,7 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 	socklen_t len = sizeof(sockerr);
 	getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR,
 		reinterpret_cast<char*>(&sockerr), &len);
-	_TRACELOG(logger, "socket_fd:%d, result:%d", conn->m_fd, sockerr);
+	_DEBUGLOG(logger, "sockfd:%d, result:%d", conn->m_fd, sockerr);
 	if (sockerr == 0)
 	{ //connect success
 		conn->m_state = NetConnectState::NET_CONN_CONNECTED;
@@ -241,7 +240,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
-			_TRACELOG(logger, "socket_fd:%d send %uB", conn->m_fd, n);
+			_DEBUGLOG(logger, "sockfd:%d send %uB", conn->m_fd, n);
 			bytes_sent += n;
 			msg.bytes_sent += n;
 			if (msg.bytes_sent == msg.data_len)
@@ -258,7 +257,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			{
 				///TODO: drop msg if fail several times
 				on_error_event(conn);
-				_WARNLOG(logger, "socket_fd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+				_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
 			return bytes_sent;
 		}
@@ -284,7 +283,7 @@ L_READ:
 
 	if (recv_len > 0)
 	{ //recv data
-		_TRACELOG(logger, "socket_fd:%d recv %uB, total:%uB",
+		_DEBUGLOG(logger, "sockfd:%d recv %uB, total:%uB",
 			conn->m_fd, recv_len, conn->m_recv_len);
 		change_timer(conn->m_timerid, m_idle_timeout);
 		bytes_recv += recv_len;
@@ -340,7 +339,7 @@ L_READ:
 	}
 	else if (recv_len == 0)
 	{ //peer close conn ///TODO: 半关闭
-		_TRACELOG(logger, "socket_fd:%d close", conn->m_fd);
+		_DEBUGLOG(logger, "sockfd:%d close", conn->m_fd);
 		if (conn->m_recv_len > 0)
 		{
 			process_net_msg(conn);
@@ -357,7 +356,7 @@ L_READ:
 		if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 		{
 			on_error_event(conn);
-			_WARNLOG(logger, "socket_fd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+			_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 		}
 	}
 
@@ -431,7 +430,7 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 L_ERR:
 	ret = GET_SOCK_ERR();
 	assert(ret != 0);
-	_WARNLOG(logger, "socket_fd:%d error:%d[%s]", fd, ret, strerror(ret));
+	_WARNLOG(logger, "sockfd:%d error:%d[%s]", fd, ret, strerror(ret));
 	::closesocket(fd);
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
@@ -461,7 +460,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 		{
 			NetConnect conn(fd);
 			add_conn(&conn);
-			_TRACELOG(logger, "connected, fd:%d", fd);
+			_DEBUGLOG(logger, "connected, fd:%d", fd);
 			return std::make_pair(0, fd);
 		}
 		else
@@ -472,7 +471,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 			{
 				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
 				add_conn(&conn);
-				_TRACELOG(logger, "would block, fd:%d", fd);
+				_DEBUGLOG(logger, "would block, fd:%d", fd);
 				return std::make_pair(0, fd);
 			}
 			else if (ret == WSAEINTR/*linux*/)
@@ -484,7 +483,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 	}
 
 	::closesocket(fd);
-	_WARNLOG(logger, "socket_fd:%d error:%d[%s]", fd, ret, strerror(ret));
+	_WARNLOG(logger, "sockfd:%d error:%d[%s]", fd, ret, strerror(ret));
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
 }
