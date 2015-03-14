@@ -28,30 +28,15 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			if(mode&SELIN && evs[i].events&EPOLLIN)
 			{
 				bytes_recv += t->on_read_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 			if(mode&SELOUT && evs[i].events&EPOLLOUT)
 			{
 				bytes_sent += t->on_write_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 			if(evs[i].events & EPOLLERR)
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 		}
 	}
@@ -204,30 +189,15 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			if (FD_ISSET(it->first, &read_fds))
 			{
 				bytes_recv += t->on_read_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 			if (FD_ISSET(it->first, &write_fds))
 			{
 				bytes_sent += t->on_write_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 			if (FD_ISSET(it->first, &except_fds))
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
-				if (conn->m_state == NetConnectState::NET_CONN_CLOSED)
-				{
-					t->remove_conn(conn);
-					continue;
-				}
 			}
 		}
 	}

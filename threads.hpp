@@ -993,10 +993,12 @@ class MultiplexNetThread : public NetBaseThread
 {
 private:
 	std::unordered_map<uint32_t, NetConnect> m_conns;
+	std::vector<uint32_t> m_removed_conns;
 	Selector m_selector;
 public:
 	MultiplexNetThread()
 		: m_conns()
+		, m_removed_conns()
 		, m_selector()
 	{
 	}
@@ -1131,6 +1133,15 @@ public:
 			n = m_selector.poll(reinterpret_cast<void*>(this), mode, 0);
 		}
 
+		if (!m_removed_conns.empty())
+		{ // close conn
+			for (auto id : m_removed_conns)
+			{
+				m_conns.erase(id);
+			}
+			m_removed_conns.clear();
+		}
+
 		return n;
 	}
 public:
@@ -1165,9 +1176,9 @@ public:
 				del_timer(conn->m_timerid);
 				conn->m_timerid = -1;
 			}
-			on_close(conn);
 			m_selector.del(conn->m_fd);
-			m_conns.erase(conn->m_fd);
+			m_removed_conns.push_back(conn->id());
+			on_close(conn);
 		}
 	}
 	virtual void remove_conn(uint32_t conn_id)
