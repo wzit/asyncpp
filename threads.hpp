@@ -641,8 +641,11 @@ public:
 		getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&sockerr), &len);
 		
 		_WARNLOG(logger, "sockfd:%d, sockerr:%d, errno:%d[%s], state:%d", conn->m_fd, sockerr, ret, strerror(errno), conn->m_state);
-		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
-			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
+		if (conn->m_state == NetConnectState::NET_CONN_CLOSING)
+		{
+			remove_conn(conn);
+		}
+		else if(conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
 			if (sockerr == 0) sockerr = ret;
 			assert(sockerr != 0);
