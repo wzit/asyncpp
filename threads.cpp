@@ -225,7 +225,11 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 	else
 	{
 		//assert(0);
-		if (on_error(conn, sockerr) == 0) close(conn);
+		if (on_error(conn, sockerr) == 0)
+		{
+			//close(conn);
+			remove_conn(conn);
+		}
 	}
 	return 0;
 }
