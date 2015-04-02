@@ -39,14 +39,18 @@
 #include <unistd.h>
 #endif
 
-#ifndef __FUNCSIG__
-#ifdef  __PRETTY_FUNCTION__
-#define __FUNCSIG__ __PRETTY_FUNCTION__
-#elif defined __FUNCTION__
-#define __FUNCSIG__ __FUNCTION__
+#ifdef _WIN32
+
+#ifdef _DEBUG
+#define __LOGFUNCNAME__ __FUNCSIG__
 #else
-#define __FUNCSIG__ __func__
+#define __LOGFUNCNAME__ __FUNCTION__
 #endif
+
+#else
+
+#define __LOGFUNCNAME__ __func__
+
 #endif
 
 namespace asyncpp
@@ -155,12 +159,12 @@ if (LOGGER_##logger_level >= logger->m_level)\
 	if(_lg_l>0) logger->log(_lg_buf,_lg_l<LOGGER_LINE_SIZE?_lg_l:LOGGER_LINE_SIZE-1); \
 }
 
-#define logger_trace(logger, fmt, ...) _logger_wrapper(logger, TRACE, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
-#define logger_debug(logger, fmt, ...) _logger_wrapper(logger, DEBUG, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
-#define logger_info(logger, fmt, ...) _logger_wrapper(logger, INFO, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
-#define logger_warn(logger, fmt, ...) _logger_wrapper(logger, WARN, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
-#define logger_error(logger, fmt, ...) _logger_wrapper(logger, ERROR, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
-#define logger_fatal(logger, fmt, ...) _logger_wrapper(logger, FATAL, __FILE__, __LINE__, __FUNCSIG__, fmt, ##__VA_ARGS__)
+#define logger_trace(logger, fmt, ...) _logger_wrapper(logger, TRACE, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
+#define logger_debug(logger, fmt, ...) _logger_wrapper(logger, DEBUG, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
+#define logger_info(logger, fmt, ...) _logger_wrapper(logger, INFO, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
+#define logger_warn(logger, fmt, ...) _logger_wrapper(logger, WARN, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
+#define logger_error(logger, fmt, ...) _logger_wrapper(logger, ERROR, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
+#define logger_fatal(logger, fmt, ...) _logger_wrapper(logger, FATAL, __FILE__, __LINE__, __LOGFUNCNAME__, fmt, ##__VA_ARGS__)
 
 #ifndef _RELEASE
 #define logger_assert(expr) \
@@ -168,7 +172,7 @@ if (!(expr))\
 {\
 	int32_t _lg_errcode = errno;\
 	logger_fatal(logger, "Assertion '" #expr "' failed. errno:%d[%s]", _lg_errcode, strerror(_lg_errcode)); \
-	fprintf(stderr, "%s: %u: %s: Assertion '" #expr "' failed.\n", __FILE__, __LINE__, __FUNCSIG__); \
+	fprintf(stderr, "%s: %u: %s: Assertion '" #expr "' failed.\n", __FILE__, __LINE__, __LOGFUNCNAME__); \
 	abort();\
 }
 
@@ -176,7 +180,7 @@ if (!(expr))\
 if (int_var != expected_val)\
 {\
 	logger_fatal(logger, #int_var " = %d.", int_var); \
-	fprintf(stderr, "%s: %u: %s: " #int_var " = %d\n", __FILE__, __LINE__, __FUNCSIG__, int_var); \
+	fprintf(stderr, "%s: %u: %s: " #int_var " = %d\n", __FILE__, __LINE__, __LOGFUNCNAME__, int_var); \
 	abort(); \
 }
 
@@ -185,7 +189,7 @@ if (int_var != expected_val)\
 #define logger_assert_false() \
 {\
 	logger_fatal(logger, "Assertion fatal error."); \
-	fprintf(stderr, "%s: %u: %s: Assertion fatal error.\n", __FILE__, __LINE__, __FUNCSIG__); \
+	fprintf(stderr, "%s: %u: %s: Assertion fatal error.\n", __FILE__, __LINE__, __LOGFUNCNAME__); \
 	abort(); \
 }
 #else
