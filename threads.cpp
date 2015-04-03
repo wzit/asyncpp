@@ -374,7 +374,19 @@ int32_t NetBaseThread::set_sock_nonblock(SOCKET_HANDLE fd)
 	int ret = ioctlsocket(fd, FIONBIO, &non_block);
 #else
 	//long flags = fcntl(fd, F_GETFL);
-	int ret = fcntl(fd, F_SETFL, /*flags |*/ O_NONBLOCK);
+	int ret = fcntl(fd, F_SETFL, /*flags |*/ O_NONBLOCK | FD_CLOEXEC);
+#endif
+	assert(ret == 0);
+	return  ret == 0 ? 0 : GET_SOCK_ERR();
+}
+
+int32_t NetBaseThread::set_sock_cloexec(SOCKET_HANDLE fd)
+{
+#ifdef _WIN32
+	int32_t ret = 0;
+#else
+	//long flags = fcntl(fd, F_GETFL);
+	int ret = fcntl(fd, F_SETFL, /*flags |*/ FD_CLOEXEC);
 #endif
 	assert(ret == 0);
 	return  ret == 0 ? 0 : GET_SOCK_ERR();
@@ -390,6 +402,11 @@ SOCKET_HANDLE NetBaseThread::create_tcp_socket(bool nonblock)
 	if (nonblock)
 	{
 		int ret = set_sock_nonblock(fd);
+		assert(ret == 0);
+	}
+	else
+	{
+		int ret = set_sock_cloexec(fd);
 		assert(ret == 0);
 	}
 	return fd;

@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
@@ -265,22 +266,37 @@ public:
 	int32_t add(SOCKET_HANDLE fd, NetConnectState state)
 	{
 		assert(fd != INVALID_SOCKET);
-		assert(m_fds.find(fd) == m_fds.end());
+		auto it = m_fds.find(fd);
+		if (it != m_fds.end())
+		{
+			auto itrm = std::find(m_removed_fds.begin(), m_removed_fds.end(), fd);
+			assert(itrm != m_removed_fds.end());
+			if (itrm != m_removed_fds.end())
+			{
+				*itrm = INVALID_SOCKET;
+			}
+			else
+			{
+				//logger_warn(logger, "duplicate sockfd:%d", fd);
+				return -1;
+			}
+		}
 		if (state == NetConnectState::NET_CONN_CONNECTED)
 		{
-			m_fds.insert(std::make_pair(fd, SELIN | SELOUT));
+			m_fds[fd] = SELIN | SELOUT;
 		}
 		else if (state == NetConnectState::NET_CONN_LISTENING)
 		{
-			m_fds.insert(std::make_pair(fd, SELIN));
+			m_fds[fd] = SELIN;
 		}
 		else if (state == NetConnectState::NET_CONN_CONNECTING)
 		{
-			m_fds.insert(std::make_pair(fd, SELOUT));
+			m_fds[fd] = SELOUT;
 		}
 		else
 		{
 			assert(0);
+			return EINVAL;
 		}
 		return 0;
 	}
