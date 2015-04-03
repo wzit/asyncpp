@@ -660,6 +660,7 @@ protected:
 	uint32_t do_send(NetConnect* conn);
 	uint32_t do_recv(NetConnect* conn);
 	int32_t set_sock_nonblock(SOCKET_HANDLE fd);
+	int32_t set_sock_cloexec(SOCKET_HANDLE fd);
 	SOCKET_HANDLE create_tcp_socket(bool nonblock = true);
 
 protected:
@@ -1147,22 +1148,31 @@ public:
 public:
 	virtual void add_conn(NetConnect* conn) override
 	{
-		assert(conn->m_fd != INVALID_SOCKET);
+		SOCKET_HANDLE fd = conn->m_fd;
+		assert(fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
-		assert(m_conns.find(conn->m_fd) == m_conns.end());
-		set_sock_nonblock(conn->m_fd);
-		_DEBUGLOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
+		assert(m_conns.find(fd) == m_conns.end());
+		set_sock_nonblock(fd);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
-			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, conn->id());
+			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, fd);
 		}
 		else if (conn->m_state == NetConnectState::NET_CONN_CONNECTING)
 		{
-			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
+			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, fd);
 		}
-		m_selector.add(conn->m_fd, conn->m_state);
-		m_conns.insert(std::make_pair(conn->id(), std::move(*conn)));
+		int32_t ret = m_selector.add(fd, conn->m_state);
+		m_conns.insert(std::make_pair(fd, std::move(*conn)));
+		if (ret == 0)
+		{
+			_DEBUGLOG(logger, "sockfd:%d, state:%d", fd, conn->m_state);
+		}
+		else
+		{
+			///TODO: close conn
+			_ERRORLOG(logger, "sockfd:%d, state:%d, add selector ret:%d", fd, conn->m_state, ret);
+		}
 	}
 	virtual void remove_conn(NetConnect* conn) override
 	{
