@@ -432,6 +432,9 @@ public:
 	uint64_t get_ctx()const{return m_ctx;}
 	void set_send_queue_limit(uint16_t limit){m_send_queue_limit=limit;}
 	uint16_t get_send_queue_limit()const{return m_send_queue_limit;}
+	uint32_t send_queue_size(){return m_send_list.size();}
+	uint32_t send_queue_empty(){return m_send_list.empty();}
+	bool send_queue_full(){return m_send_list.size() >= m_send_queue_limit;}
 	void enlarge_recv_buffer(int32_t n)
 	{
 		if (n > m_recv_buf_len)
