@@ -682,7 +682,7 @@ protected:
 	*/
 	virtual std::pair<int32_t, SOCKET_HANDLE>
 		create_connect_socket(const char* ip, uint16_t port,
-			bool nonblock = true);
+		bool nonblock = true, uint32_t seq = 0);
 protected:
 	/*
 	 线程内部接口，获取一个消息的长度
@@ -935,7 +935,7 @@ protected:
 
 	virtual std::pair<int32_t, SOCKET_HANDLE>
 		create_connect_socket(const char* ip, uint16_t port,
-		bool nonblock = true) override
+		bool nonblock = true, uint32_t seq = 0) override
 	{
 		return {EINVAL, INVALID_SOCKET};
 	}
@@ -955,11 +955,11 @@ public:
 protected:
 	virtual std::pair<int32_t, SOCKET_HANDLE>
 		create_connect_socket(const char* ip, uint16_t port,
-		bool nonblock = true) override
+		bool nonblock = true, uint32_t seq = 0) override
 	{
 		if (m_conn.m_fd != INVALID_SOCKET)
 			return {EINPROGRESS,INVALID_SOCKET};
-		const auto& r = NetBaseThread::create_connect_socket(ip, port, false);
+		const auto& r = NetBaseThread::create_connect_socket(ip, port, false, seq);
 		if (r.first == 0 && nonblock)
 		{
 			set_sock_nonblock(r.second);
@@ -1025,7 +1025,7 @@ public:
 			if (is_str_ipv4(msg.m_buf))
 			{
 				auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
-				const auto& r = create_connect_socket(msg.m_buf, ctx->m_port);
+				const auto& r = create_connect_socket(msg.m_buf, ctx->m_port, true, ctx->m_seq);
 
 				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 
@@ -1099,7 +1099,7 @@ public:
 			auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
 			if (ctx->m_ret == 0)
 			{
-				const auto& r = create_connect_socket(ctx->m_ip, ctx->m_port);
+				const auto& r = create_connect_socket(ctx->m_ip, ctx->m_port, true, ctx->m_seq);
 
 				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
 

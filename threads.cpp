@@ -459,7 +459,7 @@ L_ERR:
 
 std::pair<int32_t, SOCKET_HANDLE>
 NetBaseThread::create_connect_socket(const char* ip,
-	uint16_t port, bool nonblock)
+	uint16_t port, bool nonblock, uint32_t seq)
 {
 	int ret = 0;
 	struct sockaddr_in addr = {};
@@ -480,6 +480,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 		if (ret == 0)
 		{
 			NetConnect conn(fd);
+			conn.m_ctx = seq;
 			add_conn(&conn);
 			_DEBUGLOG(logger, "connected, fd:%d", fd);
 			return std::make_pair(0, fd);
@@ -491,6 +492,7 @@ NetBaseThread::create_connect_socket(const char* ip,
 			if (ret == WSAEWOULDBLOCK/*win*/ || ret == WSAEINPROGRESS/*linux*/)
 			{
 				NetConnect conn(fd, NetConnectState::NET_CONN_CONNECTING);
+				conn.m_ctx = seq;
 				add_conn(&conn);
 				_DEBUGLOG(logger, "would block, fd:%d", fd);
 				return std::make_pair(0, fd);
@@ -771,7 +773,7 @@ void NonblockConnectThread::process_msg(ThreadMsg& msg)
 			ctx->m_ret = dns_query(msg.m_buf, ip);
 			if (ctx->m_ret == 0)
 			{
-				const auto& r = create_connect_socket(ip, ctx->m_port);
+				const auto& r = create_connect_socket(ip, ctx->m_port, true, ctx->m_seq);
 				assert(r.first == 0);
 				ctx->m_ret = r.first;
 				ctx->m_connid = static_cast<uint32_t>(r.second);
