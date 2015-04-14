@@ -385,11 +385,11 @@ public:
 	}
 	void destruct()
 	{
-		assert(m_state == NetConnectState::NET_CONN_CLOSED);
 		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
 			_INFOLOG(logger, "close sockfd:%d, state:%d", m_fd, m_state);
+			assert(m_state == NetConnectState::NET_CONN_CLOSED);
 			::closesocket(m_fd);
 			m_fd = INVALID_SOCKET;
 		}
