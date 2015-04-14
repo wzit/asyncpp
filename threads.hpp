@@ -385,6 +385,7 @@ public:
 	}
 	void destruct()
 	{
+		assert(m_state == NetConnectState::NET_CONN_CLOSED);
 		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
@@ -1141,7 +1142,12 @@ public:
 		{ // close conn
 			for (auto id : m_removed_conns)
 			{
-				m_conns.erase(id);
+				int32_t ret = m_conns.erase(id);
+				assert(ret == 1);
+				if (ret != 1)
+				{
+					_WARNLOG(logger, "remove sockfd:%d error, cnt:%d", ret);
+				}
 			}
 			m_removed_conns.clear();
 		}
@@ -1155,6 +1161,15 @@ public:
 		assert(fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
+#ifdef _DEBUG
+		auto it = m_conns.find(fd);
+		if (it != m_conns.end())
+		{
+			_WARNLOG(logger, "duplicate sockfd:%d, state:%d", it->second.m_fd, it->second.m_state);
+			auto itrm = std::find(m_removed_conns.begin(), m_removed_conns.end(), fd);
+			assert(itrm != m_removed_conns.end());
+		}
+#endif
 		assert(m_conns.find(fd) == m_conns.end());
 		set_sock_nonblock(fd);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)

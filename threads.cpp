@@ -711,8 +711,8 @@ void NetBaseThread::run()
 {
 	for (;;)
 	{
-		uint32_t net_msg_cnt = poll();
 		uint32_t thread_msg_cnt = check_timer_and_thread_msg();
+		uint32_t net_msg_cnt = poll();
 		if (thread_msg_cnt == 0 && net_msg_cnt == 0)
 		{
 			usleep(50 * 1000);
