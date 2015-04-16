@@ -390,6 +390,9 @@ public:
 		{
 			_INFOLOG(logger, "close sockfd:%d, state:%d", m_fd, m_state);
 			assert(m_state == NetConnectState::NET_CONN_CLOSED);
+#ifdef _ASYNCPP_DEBUG
+			assert(m_ctx == 0x010203041234dbfellu);
+#endif
 			::closesocket(m_fd);
 			m_fd = INVALID_SOCKET;
 		}
@@ -876,7 +879,12 @@ public:
 
 			m_ss.sample(bytes_recv, bytes_sent);
 			if (m_conn.m_state == NetConnectState::NET_CONN_CLOSED)
+			{
+#ifdef _ASYNCPP_DEBUG
+				m_conn.m_ctx = 0x010203041234dbfellu;
+#endif
 				m_conn.destruct();
+			}
 
 			return bytes_sent + bytes_recv;
 
@@ -1142,6 +1150,11 @@ public:
 		{ // close conn
 			for (auto id : m_removed_conns)
 			{
+#ifdef _ASYNCPP_DEBUG
+				NetConnect* conn = get_conn(id);
+				assert(conn != nullptr);
+				conn->m_ctx = 0x010203041234dbfellu;
+#endif
 				int32_t ret = m_conns.erase(id);
 				assert(ret == 1);
 				if (ret != 1)
@@ -1161,7 +1174,7 @@ public:
 		assert(fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
-#ifdef _DEBUG
+#ifdef _ASYNCPP_DEBUG
 		auto it = m_conns.find(fd);
 		if (it != m_conns.end())
 		{
