@@ -55,6 +55,18 @@ char* strtoupper(char* s)
 	}
 	return s;
 }
+#elif defined(_WIN32)
+const char* stristr(const char* s1, const char* s2)
+{
+	int32_t n = strlen(s2);
+	while (*s1 != 0)
+	{
+		if (strnicmp(s1, s2, n) == 0)
+			return s1;
+		++s1;
+	}
+	return NULL;
+}
 #endif
 
 int64_t atoi64(const char *nptr)

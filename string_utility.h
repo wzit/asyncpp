@@ -36,7 +36,6 @@
 #define strnicmp(a,b,n) _strnicmp(a,b,n)
 #define strtolower(s) _strlwr(s)
 #define strtoupper(s) _strupr(s)
-#define stristr(s1,s2) _stristr(s1, s2)
 #else
 #error os not support
 #endif
@@ -51,6 +50,7 @@ char* strtolower(char* s);
 char* strtoupper(char* s);
 #elif defined(_WIN32)
 //uint64_t strtou64(const char *nptr, const char **endptr, int base);
+const char* stristr(const char* s1, const char* s2);
 #endif
 
 /**
