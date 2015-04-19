@@ -26,6 +26,9 @@
 #ifndef strnicmp
 #define strnicmp(s1,s2,n) strncasecmp(s1,s2,n)
 #endif
+#ifndef stristr
+#define stristr(s1,s2) strcasestr(s1,s2)
+#endif
 //#define strtou64(nptr,endptr,base) strtoull(nptr,endptr,base) //暂不使用标准库
 //#define strtoi64(nptr,endptr,base) strtoll(nptr,endptr,base)
 #elif defined(_WIN32)
@@ -33,6 +36,7 @@
 #define strnicmp(a,b,n) _strnicmp(a,b,n)
 #define strtolower(s) _strlwr(s)
 #define strtoupper(s) _strupr(s)
+#define stristr(s1,s2) _stristr(s1, s2)
 #else
 #error os not support
 #endif
