@@ -415,7 +415,7 @@ public:
 		{
 			m_send_list = std::move(val.m_send_list);
 			m_ctx = val.m_ctx;
-			m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
+			free(m_recv_buf); m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
 			m_recv_len = val.m_recv_len;
 			m_recv_buf_len = val.m_recv_buf_len;
 			m_header_len = val.m_header_len;
@@ -1174,16 +1174,28 @@ public:
 		assert(fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
-#ifdef _ASYNCPP_DEBUG
 		auto it = m_conns.find(fd);
 		if (it != m_conns.end())
 		{
-			_WARNLOG(logger, "duplicate sockfd:%d, state:%d", it->second.m_fd, it->second.m_state);
-			auto itrm = std::find(m_removed_conns.begin(), m_removed_conns.end(), fd);
-			assert(itrm != m_removed_conns.end());
+			assert(it->second.m_fd == INVALID_SOCKET);
+			assert(it->second.m_state == NetConnectState::NET_CONN_CLOSED);
+			if (it->second.m_fd == INVALID_SOCKET)
+			{
+				_INFOLOG(logger, "overwrite conn, key:%d, new sockfd:%d", it->first, conn->m_fd);
+				it->second = std::move(*conn);
+			}
+			else
+			{
+				_WARNLOG(logger, "duplicate sockfd:%d, state:%d, key:%d, new sockfd:%d", it->second.m_fd, it->second.m_state, it->first, conn->m_fd);
+				///TODO: close new conn or close old conn
+				return;
+			}
 		}
-#endif
-		assert(m_conns.find(fd) == m_conns.end());
+		else
+		{
+			m_conns.insert(std::make_pair(fd, std::move(*conn)));
+		}
+
 		set_sock_nonblock(fd);
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
@@ -1194,7 +1206,6 @@ public:
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, fd);
 		}
 		int32_t ret = m_selector.add(fd, conn->m_state);
-		m_conns.insert(std::make_pair(fd, std::move(*conn)));
 		if (ret == 0)
 		{
 			_DEBUGLOG(logger, "sockfd:%d, state:%d", fd, conn->m_state);
