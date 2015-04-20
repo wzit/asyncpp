@@ -1181,12 +1181,12 @@ public:
 			assert(it->second.m_state == NetConnectState::NET_CONN_CLOSED);
 			if (it->second.m_fd == INVALID_SOCKET)
 			{
-				_INFOLOG(logger, "overwrite conn, key:%d, new sockfd:%d", it->first, conn->m_fd);
+				_WARNLOG(logger, "overwrite conn, key:%d, new sockfd:%d", it->first, conn->m_fd);
 				it->second = std::move(*conn);
 			}
 			else
 			{
-				_WARNLOG(logger, "duplicate sockfd:%d, state:%d, key:%d, new sockfd:%d", it->second.m_fd, it->second.m_state, it->first, conn->m_fd);
+				_ERRORLOG(logger, "duplicate sockfd:%d, state:%d, key:%d, new sockfd:%d", it->second.m_fd, it->second.m_state, it->first, conn->m_fd);
 				///TODO: close new conn or close old conn
 				return;
 			}
