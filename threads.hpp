@@ -407,15 +407,29 @@ public:
 	NetConnect& operator=(const NetConnect&) = delete;
 	NetConnect(NetConnect&& val)
 	{
-		*this = std::move(val);
+		if (&val != this)
+		{
+			copy(std::move(val));
+		}
 	}
 	NetConnect& operator=(NetConnect&& val)
 	{
 		if (&val != this)
 		{
+			free(m_recv_buf);
+			copy(std::move(val));
+		}
+		return *this;
+	}
+
+private:
+	void copy(NetConnect&& val)
+	{
+		if (&val != this)
+		{
 			m_send_list = std::move(val.m_send_list);
 			m_ctx = val.m_ctx;
-			free(m_recv_buf); m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
+			m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
 			m_recv_len = val.m_recv_len;
 			m_recv_buf_len = val.m_recv_buf_len;
 			m_header_len = val.m_header_len;
@@ -428,7 +442,6 @@ public:
 			m_net_msg_type = val.m_net_msg_type;
 			m_send_queue_limit = val.m_send_queue_limit;
 		}
-		return *this;
 	}
 
 public:
