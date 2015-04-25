@@ -59,16 +59,16 @@ int32_t Logger::log(const char* buf, uint32_t l)
 		if (m_filesize < m_filesizelimit) m_filesize += l; //write size may < l
 		else
 		{
-			char buf[16];
-			i32toa(m_filenumlimit - 1, buf);
-			string newpath = m_filepath + '.' + buf;
+			char numstr[16];
+			i32toa(m_filenumlimit - 1, numstr);
+			string newpath = m_filepath + '.' + numstr;
 #ifdef _WIN32
 			unlink(newpath.c_str());
 #endif
 			for (int32_t i = m_filenumlimit - 2; i > 0; --i)
 			{
-				i32toa(i, buf);
-				string oldpath = m_filepath + '.' + buf;
+				i32toa(i, numstr);
+				string oldpath = m_filepath + '.' + numstr;
 				ret = rename(oldpath.c_str(), newpath.c_str());
 				newpath = oldpath;
 			}

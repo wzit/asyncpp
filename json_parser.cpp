@@ -87,6 +87,7 @@ static void transfer_char(char** s, char c)
 
 static int32_t transfer_ucs2_to_utf8(char** s, char** p_cursor, uint32_t remain_len, char quote)
 {
+	(void)quote;
 	if (remain_len < 5 || remain_len > MAX_JSON_LEN) return -1;
 	if (isxdigit((*p_cursor)[0]) && isxdigit((*p_cursor)[1])
 		&& isxdigit((*p_cursor)[2]) && isxdigit((*p_cursor)[3]))
@@ -216,6 +217,7 @@ int32_t JO::parse_value_string(char** p_cursor, uint32_t remain_len, char quote)
 
 int32_t JO::parse_value_bool(char** p_cursor, uint32_t remain_len)
 {
+	(void)remain_len;
 	//skip_space(*p_cursor);
 
 	set_type(jo_type_t::boolean);
@@ -234,6 +236,7 @@ int32_t JO::parse_value_bool(char** p_cursor, uint32_t remain_len)
 
 int32_t JO::parse_value_number(char** p_cursor, uint32_t remain_len)
 {
+	(void)remain_len;
 	//if (remain_len > MAX_JSON_LEN) return -1;
 
 	set_type(jo_type_t::number);

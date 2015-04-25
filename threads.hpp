@@ -1172,7 +1172,7 @@ public:
 				assert(ret == 1);
 				if (ret != 1)
 				{
-					_WARNLOG(logger, "remove sockfd:%d error, cnt:%d", ret);
+					_WARNLOG(logger, "remove sockfd:%d error, cnt:%d", id, ret);
 				}
 			}
 			m_removed_conns.clear();
