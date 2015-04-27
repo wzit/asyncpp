@@ -1,8 +1,11 @@
 ﻿#include "threads.hpp"
 #include "asyncpp.hpp"
 #include "http_utility.h"
+#include <codecvt>
 #include <cassert>
 #include <errno.h>
+
+using namespace std;
 
 namespace asyncpp
 {
@@ -80,9 +83,17 @@ int32_t dns_query(const char* host, char* ip)
 	ret = getaddrinfo(host, nullptr, &hints, &result);
 	if (0 != ret)
 	{
+#ifdef _WIN32
+		const wchar_t* wp = gai_strerrorW(ret);
+		wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> utf16conv;
+		string errmsg = utf16conv.to_bytes(wp);
+		const char* p = errmsg.c_str();
+#else
+		const char* p = gai_strerror(ret);
+#endif
 		_ERRORLOG(logger, "getaddrinfo of %s fail:%d[%s], "
 			"errno:%d[%s], result: %p", host, ret,
-			gai_strerror(ret), errno, strerror(errno), result);
+			p, errno, strerror(errno), result);
 	}
 	else
 	{
@@ -436,7 +447,7 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 		reinterpret_cast<char*>(&bReuse), sizeof bReuse);
 	assert(ret == 0);
 
-	ret = bind(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
+	ret = ::bind(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof addr);
 	if (ret != 0) goto L_ERR;
 
 	ret = listen(fd, 100);
