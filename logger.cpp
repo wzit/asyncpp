@@ -97,7 +97,7 @@ int32_t Logger::load_cfg(const char* cfg_path)
 #endif
 	if (f == nullptr)
 	{
-		printf("load cfg, open %s fail:%d[%s]\n", cfg_path, errno, strerror(errno));
+		//printf("load cfg, open %s fail:%d[%s]\n", cfg_path, errno, strerror(errno));
 		return errno;
 	}
 

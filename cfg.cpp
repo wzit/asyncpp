@@ -114,7 +114,7 @@ int32_t CFG::read(const char* cfg_file)
 #endif
 	if (f == nullptr)
 	{
-		printf("load cfg, open %s fail:%d[%s]\n", cfg_file, errno, strerror(errno));
+		//printf("load cfg, open %s fail:%d[%s]\n", cfg_file, errno, strerror(errno));
 		return errno;
 	}
 
