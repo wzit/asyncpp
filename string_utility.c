@@ -462,7 +462,7 @@ uint32_t string2hex(const char* in, uint32_t in_len, char* out)
 uint32_t hex2string(const char* in, uint32_t len, char* out)
 {
 	char* p = out;
-	const char* end = in+(len&0xfffffffe);
+	const char* end = in+(len&~1u);
 	while(in<end){
 		char hi = get_hexvalue(*in++);
 		char lo = get_hexvalue(*in++);

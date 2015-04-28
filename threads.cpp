@@ -1,7 +1,11 @@
 ﻿#include "threads.hpp"
 #include "asyncpp.hpp"
 #include "http_utility.h"
+#ifdef _WIN32
 #include <codecvt>
+#else
+#include <locale>
+#endif
 #include <cassert>
 #include <errno.h>
 
