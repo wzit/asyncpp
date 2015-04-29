@@ -19,8 +19,14 @@ AsyncFrame::AsyncFrame()
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 	g_us_tick = ((uint64_t)ft.dwHighDateTime << 32 | ft.dwLowDateTime) / 10;
+#ifdef _ASYNCPP_DEBUG
+	assert(g_us_tick / 1000000 - 11644473600 == g_unix_timestamp);
+#endif
 #else
 	g_us_tick = g_unix_timestamp * 1000 * 1000;
+#ifdef _ASYNCPP_DEBUG
+	assert(g_us_tick / 1000000 == g_unix_timestamp);
+#endif
 #endif
 
 	/* global thread pool */

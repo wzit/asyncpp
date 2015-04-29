@@ -32,7 +32,7 @@ private:
 			{
 				left_child = right_child;
 			}
-			if (data[min_heap[left_child]] < data[min_heap[heap_idx]])
+			if (data[min_heap[left_child]] < data[data_index])
 			{
 				min_heap[heap_idx] = min_heap[left_child];
 				data_to_heap[min_heap[heap_idx]] = heap_idx;
@@ -45,6 +45,9 @@ private:
 			min_heap[heap_idx] = data_index;
 			data_to_heap[data_index] = heap_idx;
 		}
+#ifdef _ASYNCPP_DEBUG
+		assert(check());
+#endif
 	}
 
 	void shift_up(int32_t heap_index)
@@ -67,6 +70,9 @@ private:
 			min_heap[heap_idx] = data_index;
 			data_to_heap[data_index] = heap_idx;
 		}
+#ifdef _ASYNCPP_DEBUG
+		assert(check());
+#endif
 	}
 
 public:
