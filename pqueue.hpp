@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <cassert>
 //#include <utility>
 
 namespace asyncpp
