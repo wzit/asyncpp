@@ -143,7 +143,8 @@ public:
 	int32_t add_timer(uint32_t wait_time, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time * 1000000ull, ctx, type));
-		_DEBUGLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
+		_INFOLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64
+			", type:%u, ctx:%" PRIu64, timerid, wait_time, g_us_tick, type, ctx);
 		return (int32_t)timerid;
 	}
 
@@ -155,53 +156,66 @@ public:
 	int32_t add_timer_us(uint32_t wait_time_us, uint32_t type, uint64_t ctx)
 	{
 		uint32_t timerid = m_timer.push(TimerMsg(g_us_tick + wait_time_us, ctx, type));
-		_DEBUGLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
+		_INFOLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64
+			", type:%u, ctx:%" PRIu64, timerid, wait_time_us, g_us_tick, type, ctx);
 		return (int32_t)timerid;
 	}
 
 	/*
 	 删除一个定时器
 	*/
-	void del_timer(uint32_t timer_id)
+	void del_timer(uint32_t timerid)
 	{
-		if (m_timer.is_index_valid(timer_id))
+		if (m_timer.is_index_valid(timerid))
 		{
-			_DEBUGLOG(logger, "timerid:%u", timer_id);
-			m_timer.remove(timer_id);
+			_INFOLOG(logger, "timerid:%u", timerid);
+			m_timer.remove(timerid);
 		}
 		else
 		{
-			_INFOLOG(logger, "invalid timerid:%u", timer_id);
+			_WARNLOG(logger, "invalid timerid:%u", timerid);
 		}
 	}
 
 	/*
 	 修改定时器时间
 	*/
-	void change_timer(uint32_t timer_id, uint32_t wait_time)
+	void change_timer(uint32_t timerid, uint32_t wait_time)
 	{
-		if (m_timer.is_index_valid(timer_id))
+		if (m_timer.is_index_valid(timerid))
 		{
-			m_timer[timer_id].m_expire_time = g_us_tick + wait_time * 1000000ull;
-			m_timer.change_priority(timer_id);
-			_DEBUGLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timer_id, wait_time, g_us_tick);
+			m_timer[timerid].m_expire_time = g_us_tick + wait_time * 1000000ull;
+			m_timer.change_priority(timerid);
+			_INFOLOG(logger, "timerid:%u, wait_time:%us, g_us_tick:%" PRIu64, timerid, wait_time, g_us_tick);
 		}
 		else
 		{
-			_INFOLOG(logger, "invalid timerid:%u", timer_id);
+			_WARNLOG(logger, "invalid timerid:%u", timerid);
 		}
 	}
-	void change_timer_us(uint32_t timer_id, uint32_t wait_time_us)
+	void change_timer_us(uint32_t timerid, uint32_t wait_time_us)
 	{
-		if (m_timer.is_index_valid(timer_id))
+		if (m_timer.is_index_valid(timerid))
 		{
-			m_timer[timer_id].m_expire_time = g_us_tick + wait_time_us;
-			m_timer.change_priority(timer_id);
-			_DEBUGLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timer_id, wait_time_us, g_us_tick);
+			m_timer[timerid].m_expire_time = g_us_tick + wait_time_us;
+			m_timer.change_priority(timerid);
+			_INFOLOG(logger, "timerid:%u, wait_time:%uus, g_us_tick:%" PRIu64, timerid, wait_time_us, g_us_tick);
 		}
 		else
 		{
-			_INFOLOG(logger, "invalid timerid:%u", timer_id);
+			_WARNLOG(logger, "invalid timerid:%u", timerid);
+		}
+	}
+
+	const TimerMsg* get_timer(int32_t timerid) const
+	{
+		if (m_timer.is_index_valid(timerid))
+		{
+			return &m_timer[timerid];
+		}
+		else
+		{
+			return nullptr;
 		}
 	}
 
@@ -220,12 +234,12 @@ public:
 			{
 				uint32_t type = front.m_type;
 				uint64_t ctx = front.m_ctx;
-				int32_t timer_id = m_timer.front_index();
+				int32_t timerid = m_timer.front_index();
 				m_timer.pop();
 
 				++cnt;
-				_DEBUGLOG(logger, "run timerid:%d, type:%u, ctx:%" PRIu64, timer_id, type, ctx);
-				on_timer(timer_id, type, ctx);
+				_DEBUGLOG(logger, "run timerid:%d, type:%u, ctx:%" PRIu64, timerid, type, ctx);
+				on_timer(timerid, type, ctx);
 			}
 			else break;
 		}
@@ -1192,8 +1206,13 @@ public:
 		{
 			assert(it->second.m_fd == INVALID_SOCKET);
 			assert(it->second.m_state == NetConnectState::NET_CONN_CLOSED);
+			assert(it->second.m_timerid == -1);
 			if (it->second.m_fd == INVALID_SOCKET)
 			{
+				if (it->second.m_timerid != -1)
+				{
+					del_timer(it->second.m_timerid);
+				}
 				_WARNLOG(logger, "overwrite conn, key:%d, new sockfd:%d", it->first, conn->m_fd);
 				it->second = std::move(*conn);
 			}

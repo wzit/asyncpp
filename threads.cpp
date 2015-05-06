@@ -374,8 +374,8 @@ L_READ:
 		int32_t errcode = GET_SOCK_ERR();
 		if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
 		{
-			on_error_event(conn);
 			_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+			on_error_event(conn);
 		}
 	}
 
