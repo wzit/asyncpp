@@ -28,6 +28,7 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			if(mode&SELIN && evs[i].events&EPOLLIN)
 			{
 				bytes_recv += t->on_read_event(conn);
+				///TODO: 出错中断，防止重复on_error_event
 			}
 			if(mode&SELOUT && evs[i].events&EPOLLOUT)
 			{
@@ -189,6 +190,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			if (FD_ISSET(it->first, &read_fds))
 			{
 				bytes_recv += t->on_read_event(conn);
+				///TODO: 出错中断，防止重复on_error_event
 			}
 			if (FD_ISSET(it->first, &write_fds))
 			{
