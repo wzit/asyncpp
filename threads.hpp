@@ -1225,10 +1225,11 @@ public:
 		}
 		else
 		{
-			m_conns.insert(std::make_pair(fd, std::move(*conn)));
+			it = m_conns.insert(std::make_pair(fd, std::move(*conn))).first;
 		}
 
 		set_sock_nonblock(fd);
+		conn = &it->second;
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED)
 		{
 			conn->m_timerid = add_timer(m_idle_timeout, NetTimeoutTimer, fd);
