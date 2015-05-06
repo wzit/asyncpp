@@ -80,6 +80,19 @@ public:
 		}
 		else return std::move(T());
 	}
+
+	/*非线程安全*/
+	T& front()
+	{
+		//std::lock_guard<std::mutex> lock(mtx);
+		if (front_pos != after_back_pos)
+		{
+			uint32_t pos = front_pos;
+			front_pos = pos != 0 ? pos - 1 : N - 1;
+			return queue_data[pos];
+		}
+		else return queue_data[after_back_pos];
+	}
 };
 
 } //end of namespace asyncpp
