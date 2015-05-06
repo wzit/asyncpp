@@ -166,7 +166,23 @@ struct ThreadMsg
 
 	ThreadMsg(ThreadMsg&& val)
 	{
-		*this = std::move(val);
+		if (&val != this)
+		{
+			m_ctx.i64 = val.m_ctx.i64;
+			m_type = val.m_type;
+			m_buf_len = val.m_buf_len;
+			m_buf = val.m_buf;
+			m_buf_type = val.m_buf_type;
+			m_ctx_type = val.m_ctx_type;
+			m_src_thread_id = val.m_src_thread_id;
+			m_dst_thread_id = val.m_dst_thread_id;
+			m_src_thread_pool_id = val.m_src_thread_pool_id;
+			m_dst_thread_pool_id = val.m_dst_thread_pool_id;
+
+			val.m_ctx.i64 = 0;
+			val.m_buf = nullptr;
+			val.m_buf_len = 0;
+		}
 	}
 	ThreadMsg& operator=(ThreadMsg&& val)
 	{

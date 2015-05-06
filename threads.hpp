@@ -439,23 +439,20 @@ public:
 private:
 	void copy(NetConnect&& val)
 	{
-		if (&val != this)
-		{
-			m_send_list = std::move(val.m_send_list);
-			m_ctx = val.m_ctx;
-			m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
-			m_recv_len = val.m_recv_len;
-			m_recv_buf_len = val.m_recv_buf_len;
-			m_header_len = val.m_header_len;
-			m_body_len = val.m_body_len;
-			m_fd = val.m_fd; val.m_fd = INVALID_SOCKET; //do NOT close fd
-			m_timerid = val.m_timerid; val.m_timerid = -1;
-			m_client_thread_pool = val.m_client_thread_pool;
-			m_client_thread = val.m_client_thread;
-			m_state = val.m_state;
-			m_net_msg_type = val.m_net_msg_type;
-			m_send_queue_limit = val.m_send_queue_limit;
-		}
+		m_send_list = std::move(val.m_send_list);
+		m_ctx = val.m_ctx;
+		m_recv_buf = val.m_recv_buf; val.m_recv_buf = nullptr;
+		m_recv_len = val.m_recv_len;
+		m_recv_buf_len = val.m_recv_buf_len;
+		m_header_len = val.m_header_len;
+		m_body_len = val.m_body_len;
+		m_fd = val.m_fd; val.m_fd = INVALID_SOCKET; //do NOT close fd
+		m_timerid = val.m_timerid; val.m_timerid = -1;
+		m_client_thread_pool = val.m_client_thread_pool;
+		m_client_thread = val.m_client_thread;
+		m_state = val.m_state;
+		m_net_msg_type = val.m_net_msg_type;
+		m_send_queue_limit = val.m_send_queue_limit;
 	}
 
 public:
