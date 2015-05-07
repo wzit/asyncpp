@@ -43,7 +43,7 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	}
 	else if(ret < 0)
 	{
-		_WARNLOG(logger, "epoll_wait fail:%d[%s]\n", errno, strerror(errno));
+		_WARNLOG(logger, "epoll_wait fail:%d[%s]", errno, strerror(errno));
 	}
 		
 	t->m_ss.sample(bytes_recv, bytes_sent);
@@ -205,7 +205,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	}
 	else if (n < 0)
 	{
-		_WARNLOG(logger, "select fail:%d[%s], maxfd:%u\n", GET_SOCK_ERR(), strerror(errno), max_fd);
+		_WARNLOG(logger, "select fail:%d[%s], maxfd:%u", GET_SOCK_ERR(), strerror(errno), max_fd);
 		n = 0;
 	}
 
