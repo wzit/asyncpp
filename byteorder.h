@@ -67,8 +67,15 @@
 #define be64toh(x) betoh64(x)
 #define le64toh(x) letoh64(x)
 
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__) && defined(__MACH__) || defined(_AIX)
+# ifdef _AIX
+#include <dumprestor.h>
+#define __DARWIN_OSSwapInt16(x) swap_card2(x)
+#define __DARWIN_OSSwapInt32(x) swap_card4(x)
+#define __DARWIN_OSSwapInt64(x) swap_card8(x)
+# else
 #include <sys/types.h>
+# endif
 # if BYTE_ORDER == LITTLE_ENDIAN
 #  define htobe16(x) __DARWIN_OSSwapInt16 (x)
 #  define htole16(x) (x)

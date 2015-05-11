@@ -33,6 +33,8 @@
 #define THREADID (uint32_t)(pthread_self())
 #elif defined __x86_64__
 #define THREADID (uint32_t)(uint64_t)(pthread_self())
+#elif defined _AIX
+#define THREADID 0
 #else
 #error architecture not supported
 #endif
