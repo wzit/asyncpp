@@ -112,12 +112,6 @@ void AsyncFrame::start()
 	}
 
 	usleep(100 * 1000);
-	exit(0);
-}
-
-void AsyncFrame::stop()
-{
-	m_end = true;
 
 	//stop all thread - block
 	for (auto t_pool : m_thread_pools)
@@ -131,6 +125,13 @@ void AsyncFrame::stop()
 #ifdef _WIN32
 	WSACleanup();
 #endif
+
+	exit(0);
+}
+
+void AsyncFrame::stop()
+{
+	m_end = true;
 }
 
 } //end of namespace asyncpp
