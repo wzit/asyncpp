@@ -62,6 +62,7 @@ protected:
 	std::unordered_map<uint64_t, MsgContext*> m_ctxs;
 	ThreadMsg m_msg_cache[_ASYNCPP_THREAD_MSG_CACHE_SIZE];
 	ThreadPool* m_master;
+	std::thread* m_thr;
 	thread_id_t m_id;
 	ThreadState m_state;
 public:
@@ -71,6 +72,7 @@ public:
 		, m_ctxs()
 		, m_msg_cache()
 		, m_master(nullptr)
+		, m_thr(nullptr)
 		, m_id(0)
 		, m_state(ThreadState::INIT)
 	{
@@ -81,6 +83,7 @@ public:
 		, m_ctxs()
 		, m_msg_cache()
 		, m_master(threadpool)
+		, m_thr(nullptr)
 		, m_id(0)
 		, m_state(ThreadState::INIT)
 	{
@@ -94,6 +97,13 @@ public:
 public:
 	void set_state(ThreadState state) { m_state = state; }
 	ThreadState get_state() { return m_state; }
+	void attach_thread(std::thread* thr){m_thr = thr;}
+	void waitstop()
+	{
+		m_thr->join();
+		delete m_thr;
+		m_thr = nullptr;
+	}
 	
 	uint32_t check_timer_and_thread_msg();
 

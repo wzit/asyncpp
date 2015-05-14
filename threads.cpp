@@ -47,7 +47,7 @@ uint32_t BaseThread::check_timer_and_thread_msg()
 
 void BaseThread::run()
 {
-	for (;;)
+	while (!get_asynframe()->end())
 	{
 		uint32_t msg_cnt = check_timer_and_thread_msg();
 		if (msg_cnt == 0)
@@ -724,7 +724,7 @@ int32_t NetBaseThread::frame(NetConnect* conn)
 
 void NetBaseThread::run()
 {
-	for (;;)
+	while (!get_asynframe()->end())
 	{
 		uint32_t thread_msg_cnt = check_timer_and_thread_msg();
 		uint32_t net_msg_cnt = poll();

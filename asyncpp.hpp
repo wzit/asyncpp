@@ -23,6 +23,8 @@ public:
 	AsyncFrame(const AsyncFrame&) = delete;
 	AsyncFrame& operator=(const AsyncFrame&) = delete;
 
+	bool end()const{return m_end;}
+
 	/*********************添加监听*********************/
 	/**
 	添加一个监听线程组，用于高并发场景

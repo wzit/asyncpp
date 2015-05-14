@@ -64,8 +64,7 @@ void AsyncFrame::start_thread(BaseThread* t)
 {
 	if(t->get_state() == ThreadState::INIT)
 	{
-		std::thread thr(thread_main, t);
-		thr.detach();
+		t->attach_thread(new std::thread(thread_main, t));
 	}
 }
 
@@ -95,7 +94,7 @@ void AsyncFrame::start()
 		}
 	}
 
-	while (!m_end)
+	while (!end())
 	{
 #ifdef _WIN32
 		FILETIME ft;
@@ -119,6 +118,19 @@ void AsyncFrame::start()
 void AsyncFrame::stop()
 {
 	m_end = true;
+
+	//stop all thread - block
+	for (auto t_pool : m_thread_pools)
+	{
+		for (auto t : t_pool->get_threads())
+		{
+			t->waitstop();
+		}
+	}
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 }
 
 } //end of namespace asyncpp
