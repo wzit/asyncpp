@@ -641,15 +641,15 @@ int32_t calc_http_chunked(NetConnect* conn)
 			{
 				conn->m_body_len += chunklen;
 				pchunkbody += strlen("\r\n");
-				conn->m_recv_len -= pchunkbody - pchunk;
+				conn->m_recv_len -= static_cast<int32_t>(pchunkbody - pchunk);
 				memmove(pchunk, pchunkbody, end - pchunkbody);
 			}
 			else
 			{
 				// do NOT support chunk trailer
 				pchunkbody += strlen("\r\n\r\n");
-				if (pchunkbody > end) return conn->m_recv_len + strlen("\r\n");
-				conn->m_recv_len -= pchunkbody - pchunk;
+				if (pchunkbody > end) return conn->m_recv_len + static_cast<int32_t>(strlen("\r\n"));
+				conn->m_recv_len -= static_cast<int32_t>(pchunkbody - pchunk);
 				memmove(pchunk, pchunkbody, end - pchunkbody);
 				break;
 			}
@@ -689,14 +689,14 @@ int32_t NetBaseThread::frame(NetConnect* conn)
 		char* p;
 		uint32_t len;
 		if (http_get_request_header(conn->m_recv_buf, conn->m_header_len,
-			"Content-Length", strlen("Content-Length"),
+			"Content-Length", static_cast<uint32_t>(strlen("Content-Length")),
 			&p, &len) == 0)
 		{
 			conn->m_body_len = atoi(p);
 			return conn->m_header_len + conn->m_body_len;
 		}
 		else if(http_get_request_header(conn->m_recv_buf, conn->m_header_len,
-			"Transfer-Encoding", strlen("Transfer-Encoding"),
+			"Transfer-Encoding", static_cast<uint32_t>(strlen("Transfer-Encoding")),
 			&p, &len) == 0)
 		{
 			if (memcmp(p, "chunked", len) == 0)
@@ -822,7 +822,7 @@ void NonblockListenThread::process_msg(ThreadMsg& msg)
 			ctx->m_port, ctx->m_client_thread_pool_id,
 			ctx->m_client_thread_id);
 		ctx->m_ret = r.first;
-		ctx->m_connid = r.second;
+		ctx->m_connid = static_cast<uint32_t>(r.second);
 		_DEBUGLOG(logger, "%s, result:%d", msg.m_buf, ctx->m_ret);
 		get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 			msg.m_buf, msg.m_buf_len, msg.m_buf_type,

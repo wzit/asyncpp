@@ -137,7 +137,7 @@ int32_t JO::parse_string(char** s, char** p_cursor, uint32_t remain_len, char qu
 			if (*cursor == 'u')
 			{
 				++cursor;
-				ret = transfer_ucs2_to_utf8(s, &cursor, end - cursor, quote);
+				ret = transfer_ucs2_to_utf8(s, &cursor, static_cast<uint32_t>(end - cursor), quote);
 				if (ret != 0)
 				{
 					*p_cursor = cursor;
@@ -299,7 +299,7 @@ int32_t JO::parse_value_array(char** p_cursor, uint32_t remain_len)
 			JO jo;
 			char quote = *cursor;
 			++cursor;
-			ret = jo.parse_value_string(&cursor, end - cursor, quote);
+			ret = jo.parse_value_string(&cursor, static_cast<uint32_t>(end - cursor), quote);
 			if (ret != 0) break;
 			else m_array_elements->push_back(std::move(jo));
 		}
@@ -307,7 +307,7 @@ int32_t JO::parse_value_array(char** p_cursor, uint32_t remain_len)
 		{
 			JO jo;
 			++cursor;
-			ret = jo.parse_value_object(&cursor, end - cursor);
+			ret = jo.parse_value_object(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_array_elements->push_back(std::move(jo));
 		}
@@ -315,21 +315,21 @@ int32_t JO::parse_value_array(char** p_cursor, uint32_t remain_len)
 		{
 			JO jo;
 			++cursor;
-			ret = jo.parse_value_array(&cursor, end - cursor);
+			ret = jo.parse_value_array(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_array_elements->push_back(std::move(jo));
 		}
 		else if (isdigit(*cursor) || *cursor == '-') //number
 		{
 			JO jo;
-			ret = jo.parse_value_number(&cursor, end - cursor);
+			ret = jo.parse_value_number(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_array_elements->push_back(std::move(jo));
 		}
 		else if (*cursor == 't' || *cursor == 'f') //true,false
 		{
 			JO jo;
-			ret = jo.parse_value_bool(&cursor, end - cursor);
+			ret = jo.parse_value_bool(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_array_elements->push_back(std::move(jo));
 		}
@@ -358,7 +358,7 @@ int32_t JO::parse_value_array(char** p_cursor, uint32_t remain_len)
 		skip_space(cursor);
 		if (*cursor != ']')
 		{
-			ret = expect_token(&cursor, end - cursor, ',');
+			ret = expect_token(&cursor, static_cast<uint32_t>(end - cursor), ',');
 			if (ret != 0) break;
 		}
 	}
@@ -387,11 +387,11 @@ int32_t JO::parse_value_object(char** p_cursor, uint32_t remain_len)
 		}
 
 		JO jo;
-		const char* key = jo.parse_key(&cursor, end - cursor);
+		const char* key = jo.parse_key(&cursor, static_cast<uint32_t>(end - cursor));
 		if (key == nullptr) break;
 
 		skip_space(cursor);
-		ret = expect_token(&cursor, end - cursor, ':');
+		ret = expect_token(&cursor, static_cast<uint32_t>(end - cursor), ':');
 		if (ret != 0) break;
 
 		skip_space(cursor);
@@ -399,33 +399,33 @@ int32_t JO::parse_value_object(char** p_cursor, uint32_t remain_len)
 		{
 			char quote = *cursor;
 			++cursor;
-			ret = jo.parse_value_string(&cursor, end - cursor, quote);
+			ret = jo.parse_value_string(&cursor, static_cast<uint32_t>(end - cursor), quote);
 			if (ret != 0) break;
 			else m_object_members->insert(std::make_pair(key, std::move(jo)));
 		}
 		else if (*cursor == '{') //object
 		{
 			++cursor;
-			ret = jo.parse_value_object(&cursor, end - cursor);
+			ret = jo.parse_value_object(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_object_members->insert(std::make_pair(key, std::move(jo)));
 		}
 		else if (*cursor == '[') //array
 		{
 			++cursor;
-			ret = jo.parse_value_array(&cursor, end - cursor);
+			ret = jo.parse_value_array(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_object_members->insert(std::make_pair(key, std::move(jo)));
 		}
 		else if (isdigit(*cursor) || *cursor == '-') //number
 		{
-			ret = jo.parse_value_number(&cursor, end - cursor);
+			ret = jo.parse_value_number(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_object_members->insert(std::make_pair(key, std::move(jo)));
 		}
 		else if (*cursor == 't' || *cursor == 'f') //true,false
 		{
-			ret = jo.parse_value_bool(&cursor, end - cursor);
+			ret = jo.parse_value_bool(&cursor, static_cast<uint32_t>(end - cursor));
 			if (ret != 0) break;
 			else m_object_members->insert(std::make_pair(key, std::move(jo)));
 		}
@@ -453,7 +453,7 @@ int32_t JO::parse_value_object(char** p_cursor, uint32_t remain_len)
 		skip_space(cursor);
 		if (*cursor != '}')
 		{
-			ret = expect_token(&cursor, end - cursor, ',');
+			ret = expect_token(&cursor, static_cast<uint32_t>(end - cursor), ',');
 			if (ret != 0) break;
 		}
 	}
@@ -473,12 +473,12 @@ bool JO::parse_inplace(char** json, uint32_t remain_len)
 	if (*cursor == '{')
 	{
 		++cursor;
-		ret = parse_value_object(&cursor, end-cursor);
+		ret = parse_value_object(&cursor, static_cast<uint32_t>(end - cursor));
 	}
 	else if (*cursor == '[')
 	{
 		++cursor;
-		ret = parse_value_array(&cursor, end - cursor);
+		ret = parse_value_array(&cursor, static_cast<uint32_t>(end - cursor));
 	}
 	else
 	{
@@ -575,11 +575,11 @@ uint32_t JO::size() const
 {
 	if (m_type == jo_type_t::object)
 	{
-		return m_object_members->size();
+		return static_cast<uint32_t>(m_object_members->size());
 	}
 	else if (m_type == jo_type_t::array)
 	{
-		return m_array_elements->size();
+		return static_cast<uint32_t>(m_array_elements->size());
 	}
 	else
 	{

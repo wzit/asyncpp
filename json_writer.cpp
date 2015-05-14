@@ -152,7 +152,7 @@ static int32_t jo_escape_utf8_string(char* dst, const char* s, uint32_t len)
 			++in;
 		}
 	}
-	return out - dst;
+	return static_cast<uint32_t>(out - dst);
 }
 
 static int32_t jo_escape_utf16_string(char* dst, const wchar_t* s, uint32_t len)
@@ -179,7 +179,7 @@ static int32_t jo_escape_utf16_string(char* dst, const wchar_t* s, uint32_t len)
 			else *out++ = CHAR_TO_INT(s[i]);
 		}
 	}
-	return out - dst;
+	return static_cast<uint32_t>(out - dst);
 }
 
 void JOWriter::add_value_string(const char* s, uint32_t len)
@@ -263,11 +263,11 @@ void JOWriter::add_value_bool(bool n)
 {
 	if (n)
 	{
-		append("true", strlen("true"));
+		append("true", static_cast<uint32_t>(strlen("true")));
 	}
 	else
 	{
-		append("false", strlen("false"));
+		append("false", static_cast<uint32_t>(strlen("false")));
 	}
 }
 
@@ -302,43 +302,43 @@ void JOWriter::object_begin()
 
 void JOWriter::object_begin(const char* name)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	object_begin();
 }
 
 void JOWriter::object_add_string(const char* name, const char* s, uint32_t len)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_string(s, len);
 }
 
 void JOWriter::object_add_int32(const char* name, int32_t n)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_int32(n);
 }
 
 void JOWriter::object_add_uint32(const char* name, uint32_t n)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_uint32(n);
 }
 
 void JOWriter::object_add_int64(const char* name, int64_t n)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_int64(n);
 }
 
 void JOWriter::object_add_uint64(const char* name, uint64_t n)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_uint64(n);
 }
 
 void JOWriter::object_add_bool(const char* name, bool n)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	add_value_bool(n);
 }
 
@@ -372,7 +372,7 @@ void JOWriter::array_begin()
 
 void JOWriter::array_begin(const char* name)
 {
-	object_add_name(name, strlen(name));
+	object_add_name(name, static_cast<uint32_t>(strlen(name)));
 	array_begin();
 }
 

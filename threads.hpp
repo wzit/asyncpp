@@ -1189,7 +1189,7 @@ public:
 				assert(conn != nullptr);
 				conn->m_ctx = 0x010203041234dbfellu;
 #endif
-				int32_t ret = m_conns.erase(id);
+				int32_t ret = static_cast<int32_t>(m_conns.erase(id));
 				assert(ret == 1);
 				if (ret != 1)
 				{
@@ -1208,7 +1208,7 @@ public:
 		assert(fd != INVALID_SOCKET);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSED);
 		assert(conn->m_state != NetConnectState::NET_CONN_CLOSING);
-		auto it = m_conns.find(fd);
+		auto it = m_conns.find(static_cast<uint32_t>(fd));
 		if (it != m_conns.end())
 		{
 			assert(it->second.m_fd == INVALID_SOCKET);
@@ -1232,7 +1232,7 @@ public:
 		}
 		else
 		{
-			it = m_conns.insert(std::make_pair(fd, std::move(*conn))).first;
+			it = m_conns.insert(std::make_pair(static_cast<uint32_t>(fd), std::move(*conn))).first;
 		}
 
 		set_sock_nonblock(fd);

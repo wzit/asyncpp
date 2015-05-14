@@ -138,7 +138,7 @@ int32_t CFG::read(const char* cfg_file)
 	do
 	{
 		skip_space(pline);
-		int n = strlen(pline);
+		int n = static_cast<int>(strlen(pline));
 		if (n == 0) continue;
 		while (isspace(pline[--n]));
 		pline[n + 1] = 0;
@@ -175,7 +175,7 @@ int32_t CFG::read_next_section(section_t& section, char* line, FILE* f)
 			else return EINVAL;
 		}
 		skip_space(pline);
-		int n = strlen(pline);
+		int n = static_cast<int>(strlen(pline));
 		if (n == 0) continue;
 		while (isspace(pline[--n]));
 		pline[n + 1] = 0;

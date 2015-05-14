@@ -92,7 +92,7 @@ public:
 		}
 		msg.m_dst_thread_id = global_net_thread_id;
 		msg.m_dst_thread_pool_id = 0;
-		msg.m_buf_len = strlen(ip);
+		msg.m_buf_len = static_cast<uint32_t>(strlen(ip));
 		msg.m_buf = new char[msg.m_buf_len + 1];
 		memcpy(msg.m_buf, ip, msg.m_buf_len + 1);
 		msg.m_buf_type = MsgBufferType::NEW;
@@ -142,7 +142,7 @@ public:
 		}
 		msg.m_dst_thread_id = net_thread_id;
 		msg.m_dst_thread_pool_id = net_thread_pool_id;
-		msg.m_buf_len = strlen(host);
+		msg.m_buf_len = static_cast<uint32_t>(strlen(host));
 		msg.m_buf = new char[msg.m_buf_len + 1];
 		memcpy(msg.m_buf, host, msg.m_buf_len + 1);
 		msg.m_buf_type = MsgBufferType::NEW;

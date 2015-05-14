@@ -58,7 +58,7 @@ char* strtoupper(char* s)
 #elif defined(_WIN32)
 const char* stristr(const char* s1, const char* s2)
 {
-	int32_t n = strlen(s2);
+	int32_t n = (int32_t)strlen(s2);
 	while (*s1 != 0)
 	{
 		if (strnicmp(s1, s2, n) == 0)
@@ -436,7 +436,7 @@ uint32_t strrtrim(char* s, uint32_t n)
 	p = s+n-1;
 	while(isspace(CHAR_TO_INT(*p))) --p;
 	*++p = 0;
-	return p-s;
+	return (uint32_t)(p-s);
 }
 
 uint32_t strtrim(char* s, uint32_t n)
@@ -469,7 +469,7 @@ uint32_t hex2string(const char* in, uint32_t len, char* out)
 		*p++ = (hi<<4) | lo;
 	}
 	//*p = 0;
-	return p-out;
+	return (uint32_t)(p - out);
 }
 
 uint32_t decode_url(const char* in, uint32_t in_len, char* out)
@@ -527,7 +527,7 @@ uint32_t escape_uri(const char* in, uint32_t in_len, char* out)
 		}
 	}
 	*po = 0;
-	return po - out;
+	return (uint32_t)(po - out);
 }
 
 uint32_t encode_uri(const char* in, uint32_t in_len, char* out)
@@ -571,7 +571,7 @@ uint32_t encode_uri(const char* in, uint32_t in_len, char* out)
 		}
 	}
 	*po = 0;
-	return po - out;
+	return (uint32_t)(po - out);
 }
 
 uint32_t encode_uri_component(const char* in, uint32_t in_len, char* out)
@@ -604,7 +604,7 @@ uint32_t encode_uri_component(const char* in, uint32_t in_len, char* out)
 		}
 	}
 	*po = 0;
-	return po - out;
+	return (uint32_t)(po - out);
 }
 
 uint32_t time33_hash(const char* s)

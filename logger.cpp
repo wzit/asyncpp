@@ -123,7 +123,7 @@ int32_t Logger::load_cfg(const char* cfg_path)
 	do
 	{
 		skip_space(pline);
-		int n = strlen(pline);
+		int n = static_cast<int>(strlen(pline));
 		if (n == 0) continue;
 		while (isspace(pline[--n]));
 		pline[n + 1] = 0;

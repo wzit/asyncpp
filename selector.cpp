@@ -181,7 +181,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	}
 	if (n == 0) goto L_RET;
 
-	n = select(max_fd + 1, &read_fds, &write_fds, &except_fds, &tv);
+	n = select(static_cast<int>(max_fd + 1), &read_fds, &write_fds, &except_fds, &tv);
 	if (n > 0)
 	{
 		for (auto it = m_fds.begin(); it != m_fds.end(); ++it)

@@ -65,7 +65,7 @@ int32_t HttpQueryStringParser::parse_url_inplace(char* url, uint32_t len)
 	*p_cur = 0;
 	m_path_hash_value = time33_hash(m_path);
 
-	uint32_t parsed_len = p_cur - url;
+	uint32_t parsed_len = static_cast<uint32_t>(p_cur - url);
 	if (parsed_len < len)
 		return append_params_inplace(p_cur + 1, len - parsed_len - 1);
 	else return 0;
@@ -92,7 +92,7 @@ int32_t HttpQueryStringParser::append_params_inplace(
 		p_val = ++p_cur;
 		while(*p_cur!='&')++p_cur;
 		*p_cur = 0;
-		insert_param(time33_hash(p_param), p_val, p_cur-p_val);
+		insert_param(time33_hash(p_param), p_val, static_cast<uint32_t>(p_cur - p_val));
 LABLE_NEXT_PARAM:
 		p_param = ++p_cur;
 	}
@@ -115,13 +115,13 @@ int32_t http_package_parse_inplace(char* package, uint32_t package_len,
 			if (p_head != NULL)
 			{
 				*p_head = package;
-				*p_head_len = p-package;
+				*p_head_len = static_cast<uint32_t>(p - package);
 			}
 
 			if (p_body != NULL)
 			{
 				*p_body = p + 4;
-				*p_body_len = package_len - (p - package) - 4;
+				*p_body_len = package_len - static_cast<uint32_t>(p - package) - 4;
 			}
 
 			//*p = 0;
@@ -140,7 +140,7 @@ int32_t http_get_header_len(char* package, uint32_t package_len)
 		if (p[0] == '\r' && p[1] == '\n' &&
 			p[2] == '\r' && p[3] == '\n')
 		{
-			return p - package + 4;
+			return static_cast<uint32_t>(p - package) + 4;
 		}
 	}
 	return 0;
@@ -182,7 +182,7 @@ int32_t http_get_request_header(char* header, uint32_t header_len,
 			skip_space(p);
 			*p_value = p;
 			while(*p!='\r' && p<end) ++p;
-			*p_value_len = p - *p_value;
+			*p_value_len = static_cast<uint32_t>(p - *p_value);
 			return 0;
 		}
 		line = http_move_to_next_line(line, header, header_len);
@@ -227,7 +227,7 @@ int32_t http_get_cookie_item(char* cookie, uint32_t cookie_len,
 				}
 				++p;
 			}
-			*p_value_len = p - *p_value;
+			*p_value_len = static_cast<uint32_t>(p - *p_value);
 			return 0;
 		}
 		item = http_cookie_move_to_next_item(item, cookie, cookie_len);
@@ -285,7 +285,7 @@ static int32_t http_get_body_item_multipart(char* body, uint32_t body_len,
 							if (p_sub_datagram == NULL) return EPROTO;
 						}while(memcmp(p_sub_datagram, end_boundary, end_boundary_len) != 0);
 
-						*p_value_len = p_sub_datagram - *p_value - strlen("\r\n");
+						*p_value_len = static_cast<uint32_t>(p_sub_datagram - *p_value - strlen("\r\n"));
 						return 0;
 					}
 					else goto LABEL_NEXT;
@@ -334,7 +334,7 @@ static int32_t http_get_body_item_urlencoded(char* body, uint32_t body_len,
 		{
 			*p_value = ++p;
 			while(p<end && *p!='&') ++p;
-			*p_value_len = p - *p_value;
+			*p_value_len = static_cast<uint32_t>(p - *p_value);
 			return 0;
 		}
 		item = http_move_to_next_item(item, body, body_len);
@@ -351,7 +351,7 @@ int32_t http_get_body_item(char* header, uint32_t header_len,
 	char* content_type;
 	uint32_t content_type_len;
 	int32_t ret;
-	ret = http_get_request_header(header, header_len, "Content-Type", strlen("Content-Type"), &content_type, &content_type_len);
+	ret = http_get_request_header(header, header_len, "Content-Type", static_cast<uint32_t>(strlen("Content-Type")), &content_type, &content_type_len);
 	if (ret != 0 || content_type_len == 0) return EPROTO;
 	if(memcmp("multipart/form-data", content_type, strlen("multipart/form-data")) == 0)
 	{
@@ -360,7 +360,7 @@ int32_t http_get_body_item(char* header, uint32_t header_len,
 		if(memcmp("boundary=", p_boundary, strlen("boundary=")) == 0)
 		{
 			p_boundary += strlen("boundary=");
-			return http_get_body_item_multipart(body, body_len, p_boundary, content_type_len - (p_boundary-content_type), name, name_len, p_value, p_value_len);
+			return http_get_body_item_multipart(body, body_len, p_boundary, content_type_len - static_cast<uint32_t>(p_boundary - content_type), name, name_len, p_value, p_value_len);
 		}
 		else return EPROTO;
 	}
