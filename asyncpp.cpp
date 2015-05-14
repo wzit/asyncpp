@@ -125,8 +125,6 @@ void AsyncFrame::start()
 #ifdef _WIN32
 	WSACleanup();
 #endif
-
-	exit(0);
 }
 
 void AsyncFrame::stop()
