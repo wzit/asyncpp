@@ -22,7 +22,7 @@ private:
 	{
 		int32_t heap_idx = heap_index;
 		int32_t data_index = min_heap[heap_idx];
-		int32_t last_leaf = min_heap.size() - 1;
+		int32_t last_leaf = static_cast<int32_t>(min_heap.size()) - 1;
 		int32_t last_non_leaf = (last_leaf - 1) >> 1;
 		while (heap_idx <= last_non_leaf)
 		{
@@ -84,7 +84,7 @@ public:
 
 	bool empty()const{return min_heap.empty();}
 
-	uint32_t size()const{return min_heap.size();}
+	uint32_t size()const{return static_cast<uint32_t>(min_heap.size());}
 
 	void reserve(int32_t n)
 	{
@@ -106,7 +106,7 @@ public:
 	int32_t push(T&& val)
 	{
 		int32_t data_index;
-		uint32_t size = free_list.size();
+		uint32_t size = static_cast<uint32_t>(free_list.size());
 		if (size != 0)
 		{
 			data_index = free_list.back();
@@ -115,11 +115,11 @@ public:
 		}
 		else
 		{
-			data_index = data.size();
+			data_index = static_cast<int32_t>(data.size());
 			data.push_back(std::move(val));
 			data_to_heap.resize(data.size());
 		}
-		int32_t i = min_heap.size();
+		int32_t i = static_cast<int32_t>(min_heap.size());
 		min_heap.push_back(data_index);
 		data_to_heap[data_index] = i;
 		shift_up(i);
@@ -189,7 +189,7 @@ public:
 	bool check()
 	{
 		int32_t heap_idx = 0;
-		int32_t last_leaf = min_heap.size() - 1;
+		int32_t last_leaf = static_cast<int32_t>(min_heap.size()) - 1;
 		int32_t last_non_leaf = (last_leaf - 1) >> 1;
 		for (; heap_idx <= last_non_leaf; ++heap_idx)
 		{
