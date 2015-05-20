@@ -259,9 +259,10 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
-			_DEBUGLOG(logger, "sockfd:%d send %uB", conn->m_fd, n);
 			bytes_sent += n;
 			msg.bytes_sent += n;
+			_DEBUGLOG(logger, "sockfd:%d send %uB, bytes_sent:%uB, total:%uB",
+				conn->m_fd, n, msg.bytes_sent, msg.data_len);
 			if (msg.bytes_sent == msg.data_len)
 			{
 				free_buffer(msg.data, msg.buf_type);
@@ -302,11 +303,11 @@ L_READ:
 
 	if (recv_len > 0)
 	{ //recv data
+		bytes_recv += recv_len;
+		conn->m_recv_len += recv_len;
 		_DEBUGLOG(logger, "sockfd:%d recv %uB, total:%uB",
 			conn->m_fd, recv_len, conn->m_recv_len);
 		change_timer(conn->m_timerid, m_idle_timeout);
-		bytes_recv += recv_len;
-		conn->m_recv_len += recv_len;
 		int32_t package_len = frame(conn);
 		if (package_len == conn->m_recv_len)
 		{ //recv one package

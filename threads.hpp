@@ -803,6 +803,7 @@ public:
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED
 			|| conn->m_state == NetConnectState::NET_CONN_CONNECTING)
 		{
+			logger_debug(logger, "conn %d send %uB", (uint32_t)conn->m_fd, msg_len);
 			if (conn->m_send_list.empty())
 			{
 				set_rdwr_event(conn);
@@ -811,6 +812,7 @@ public:
 		}
 		else
 		{
+			logger_warn(logger, "conn %d send list full", (uint32_t)conn->m_fd);
 			assert(0);
 			return EBUSY;
 		}
