@@ -541,7 +541,11 @@ public: //private
 			m_send_list.push({ msg, msg_len, 0, buf_type });
 			return 0;
 		}
-		else return EAGAIN;
+		else
+		{
+			_WARNLOG(logger, "conn %d send list full", (uint32_t)m_fd);
+			return EAGAIN;
+		}
 	}
 };
 
@@ -803,7 +807,7 @@ public:
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED
 			|| conn->m_state == NetConnectState::NET_CONN_CONNECTING)
 		{
-			logger_debug(logger, "conn %d send %uB", (uint32_t)conn->m_fd, msg_len);
+			_DEBUGLOG(logger, "conn %d send %uB", (uint32_t)conn->m_fd, msg_len);
 			if (conn->m_send_list.empty())
 			{
 				set_rdwr_event(conn);
@@ -812,7 +816,7 @@ public:
 		}
 		else
 		{
-			logger_warn(logger, "conn %d send list full", (uint32_t)conn->m_fd);
+			_WARNLOG(logger, "conn %d error state:%d", (uint32_t)conn->m_fd, conn->m_state);
 			assert(0);
 			return EBUSY;
 		}
