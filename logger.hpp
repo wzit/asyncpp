@@ -2,7 +2,6 @@
 #define _LOGGER_HPP_
 
 #include <string>
-#include <atomic>
 #include <stdio.h>
 #include <stdint.h>
 #include <thread>
@@ -13,9 +12,9 @@
 #endif
 #include <inttypes.h>
 
+#include "spinlock.hpp"
+
 #ifdef _WIN32
-#include <Winsock2.h>
-#include <Windows.h>
 
 #ifndef localtime_r
 #define localtime_r(unix_time, tms) localtime_s(tms, unix_time)
@@ -55,66 +54,6 @@
 
 #endif
 
-namespace asyncpp
-{
-
-class SpinLock
-{
-public:
-	SpinLock() : m_lock()
-	{
-	}
-	~SpinLock()
-	{
-	}
-	SpinLock(const SpinLock& r) = delete;
-	SpinLock& operator=(const SpinLock& r) = delete;
-public:
-	//block until obtain the lock
-	void lock()
-	{
-		while (m_lock.test_and_set())
-		{
-#ifdef _WIN32
-			Sleep(1);
-#else
-			usleep(1);
-#endif
-		}
-	}
-
-	//return true if success to get the lock, false if failed
-	bool trySpinLock()
-	{
-		return !m_lock.test_and_set();
-	}
-
-	void unlock()
-	{
-		m_lock.clear();
-	}
-private:
-	volatile std::atomic_flag m_lock;
-};
-
-class ScopeSpinLock{
-public:
-	ScopeSpinLock(SpinLock& lock)
-		: m_plock(&lock)
-	{
-		m_plock->lock();
-	}
-	~ScopeSpinLock()
-	{
-		m_plock->unlock();
-	}
-	ScopeSpinLock(const ScopeSpinLock&) = delete;
-	ScopeSpinLock& operator=(const ScopeSpinLock& r) = delete;
-private:
-	SpinLock* m_plock;
-};
-
-} //end of namespace asyncpp
 
 const int LOGGER_LINE_SIZE = 4096;
 enum e_logger_level_t

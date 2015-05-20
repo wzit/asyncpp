@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <cstdint>
+#include "spinlock.hpp"
 
 #ifdef _WIN32
 #pragma warning(disable:4351) //for visual studio
@@ -11,12 +12,17 @@
 namespace asyncpp
 {
 
+//typedef std::mutex SyncQueueMutex;
+//typedef std::lock_guard<std::mutex> SyncQueueScopeLock;
+typedef SpinLock SyncQueueMutex;
+typedef ScopeSpinLock SyncQueueScopeLock;
+
 //最多容纳N-1个数据，本对象会占用 N*sizeof(T) 的内存空间
 template<typename T, std::size_t N = 128>
 class FixedSizeCircleQueue
 {
 private:
-	std::mutex mtx;
+	SyncQueueMutex mtx;
 	T queue_data[N];
 	uint32_t front_pos;
 	uint32_t after_back_pos;
@@ -27,15 +33,15 @@ public:
 	FixedSizeCircleQueue& operator=(const FixedSizeCircleQueue&) = delete;
 
 	uint32_t size() const { return front_pos >= after_back_pos ? front_pos - after_back_pos : N - (after_back_pos - front_pos); }
-	uint32_t size_safe(){std::lock_guard<std::mutex> lock(mtx); return size();}
+	uint32_t size_safe(){ SyncQueueScopeLock lock(mtx); return size(); }
 	bool empty() const { return front_pos == after_back_pos; }
-	bool empty_safe(){ std::lock_guard<std::mutex> lock(mtx); return empty(); }
+	bool empty_safe(){ SyncQueueScopeLock lock(mtx); return empty(); }
 	bool full() const { return after_back_pos != 0 ? after_back_pos - 1 == front_pos : N - 1 == front_pos; }
-	bool full_safe(){ std::lock_guard<std::mutex> lock(mtx); return full(); }
+	bool full_safe(){ SyncQueueScopeLock lock(mtx); return full(); }
 
 	bool push(T&& val)
 	{
-		std::lock_guard<std::mutex> lock(mtx);
+		SyncQueueScopeLock lock(mtx);
 		uint32_t new_pos = after_back_pos != 0 ? after_back_pos - 1 : N - 1;
 		if (new_pos != front_pos)
 		{
@@ -47,7 +53,7 @@ public:
 	}
 	bool pop(T&& val)
 	{
-		std::lock_guard<std::mutex> lock(mtx);
+		SyncQueueScopeLock lock(mtx);
 		if (front_pos != after_back_pos)
 		{
 			uint32_t pos = front_pos;
@@ -60,7 +66,7 @@ public:
 	uint32_t pop(T* val, uint32_t n)
 	{
 		uint32_t cnt = 0;
-		std::lock_guard<std::mutex> lock(mtx);
+		SyncQueueScopeLock lock(mtx);
 		while (front_pos != after_back_pos && cnt < n)
 		{
 			uint32_t pos = front_pos;
@@ -71,7 +77,7 @@ public:
 	}
 	T&& pop()
 	{
-		std::lock_guard<std::mutex> lock(mtx);
+		SyncQueueScopeLock lock(mtx);
 		if (front_pos != after_back_pos)
 		{
 			uint32_t pos = front_pos;
