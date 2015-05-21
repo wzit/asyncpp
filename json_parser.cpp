@@ -543,13 +543,15 @@ char* JO::str() const
 	else return NULL;
 }
 
+static char jo_str2_empty_string[4];
 char* JO::str2() const
 {
 	if (m_type != jo_type_t::null)
 	{
 		return m_jo_value;
 	}
-	else return "";
+	//else return "";
+	else return jo_str2_empty_string;
 }
 
 const JO& JO::operator[](const char* key) const
