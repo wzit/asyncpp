@@ -189,6 +189,10 @@ public:
 	}
 
 	/********************线程同步********************/
+	/*
+	 force_receiver_thread 如果为false，当目标线程消息队列满时尝试将该消息投递到目标线程组
+	 如果发送成功，接管msg；发送失败则msg保持不变
+	*/
 	bool send_thread_msg(ThreadMsg&& msg, bool force_receiver_thread = false)
 	{
 		bool ret =  m_thread_pools[msg.m_dst_thread_pool_id]->push_msg(
@@ -209,6 +213,10 @@ public:
 		}
 		return ret;
 	}
+
+	/*
+	 本函数调用后接管buf和ctx，请勿再继续使用
+	*/
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
 		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
@@ -231,6 +239,46 @@ public:
 				force_receiver_thread);
 		}
 	}
+
+	/*
+	 如果发送成功，接管buf和ctx；发送失败则传入的信息保持不变
+	*/
+	bool send_thread_msg2(int32_t msg_type, char* buf, uint32_t buf_len,
+		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
+		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
+		const BaseThread* sender, bool force_receiver_thread = false)
+	{
+		if (sender != nullptr)
+		{
+			ThreadMsg tmsg(ctx, msg_type, buf_len, buf, buf_type,
+				ctx_type, sender->get_id(), receiver_thread,
+				sender->get_thread_pool_id(), receiver_thread_pool);
+			if (send_thread_msg(std::move(tmsg), force_receiver_thread))
+				return true;
+			else
+			{
+				tmsg.detach();
+				return false;
+			}
+		}
+		else
+		{
+			ThreadMsg tmsg(ctx, msg_type, buf_len, buf, buf_type,
+				ctx_type, INVALID_THREAD_ID, receiver_thread,
+				INVALID_THREAD_POOL_ID, receiver_thread_pool);
+			if (send_thread_msg(std::move(tmsg), force_receiver_thread))
+				return true;
+			else
+			{
+				tmsg.detach();
+				return false;
+			}
+		}
+	}
+
+	/*
+	 本函数调用后接管buf，请勿再继续使用
+	*/
 	bool send_thread_msg(int32_t msg_type,
 		char* buf, uint32_t buf_len, MsgBufferType buf_type,
 		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
@@ -253,6 +301,47 @@ public:
 				force_receiver_thread);
 		}
 	}
+
+	/*
+	 如果发送成功，接管buf；发送失败则传入的信息保持不变
+	*/
+	bool send_thread_msg_no_ctx_2(int32_t msg_type,
+		char* buf, uint32_t buf_len, MsgBufferType buf_type,
+		thread_pool_id_t receiver_thread_pool, thread_id_t receiver_thread,
+		const BaseThread* sender, bool force_receiver_thread = false)
+	{
+		if (sender != nullptr)
+		{
+			ThreadMsg tmsg({0}, msg_type, buf_len, buf, buf_type,
+				MsgContextType::STATIC, sender->get_id(), receiver_thread,
+				sender->get_thread_pool_id(), receiver_thread_pool);
+			if (send_thread_msg(std::move(tmsg), force_receiver_thread))
+				return true;
+			else
+			{
+				tmsg.detach_buf();
+				return false;
+			}
+		}
+		else
+		{
+			ThreadMsg tmsg({0}, msg_type,
+				buf_len, buf, buf_type, MsgContextType::STATIC,
+				INVALID_THREAD_ID, receiver_thread,
+				INVALID_THREAD_POOL_ID, receiver_thread_pool);
+			if (send_thread_msg(std::move(tmsg), force_receiver_thread))
+				return true;
+			else
+			{
+				tmsg.detach_buf();
+				return false;
+			}
+		}
+	}
+
+	/*
+	 本函数调用后接管buf和ctx，请勿再继续使用
+	*/
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
 		const ThreadMsg& req, const BaseThread* sender)
@@ -272,10 +361,45 @@ public:
 			return false;
 		}
 	}
+
+	/*
+	 如果发送成功，接管buf和ctx；发送失败则传入的信息保持不变
+	*/
+	bool send_resp_msg2(int32_t msg_type, char* buf, uint32_t buf_len,
+		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
+		const ThreadMsg& req, const BaseThread* sender)
+	{
+		if (req.m_src_thread_pool_id != INVALID_THREAD_POOL_ID
+			&& req.m_src_thread_id != INVALID_THREAD_ID)
+		{
+			return send_thread_msg2(msg_type,
+				buf, buf_len, buf_type, ctx, ctx_type,
+				req.m_src_thread_pool_id, req.m_src_thread_id, sender, true);
+		}
+		else
+		{
+			_WARNLOG(logger, "invalid thread msg, type:%u", msg_type);
+			return false;
+		}
+	}
+
+	/*
+	 本函数调用后接管buf，请勿再继续使用
+	*/
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, const ThreadMsg& req, const BaseThread* sender)
 	{
 		return send_resp_msg(msg_type, buf, buf_len, buf_type,
+					{0}, MsgContextType::STATIC, req, sender);
+	}
+
+	/*
+	 如果发送成功，接管buf；发送失败则传入的信息保持不变
+	*/
+	bool send_resp_msg_no_ctx_2(int32_t msg_type, char* buf, uint32_t buf_len,
+		MsgBufferType buf_type, const ThreadMsg& req, const BaseThread* sender)
+	{
+		return send_resp_msg2(msg_type, buf, buf_len, buf_type,
 					{0}, MsgContextType::STATIC, req, sender);
 	}
 

@@ -64,6 +64,7 @@ void AsyncFrame::start_thread(BaseThread* t)
 {
 	if(t->get_state() == ThreadState::INIT)
 	{
+		_WARNLOG(logger, "%s", typeid(*t).name());
 		t->attach_thread(new std::thread(thread_main, t));
 	}
 }
