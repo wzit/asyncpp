@@ -20,12 +20,12 @@ AsyncFrame::AsyncFrame()
 	GetSystemTimeAsFileTime(&ft);
 	g_us_tick = ((uint64_t)ft.dwHighDateTime << 32 | ft.dwLowDateTime) / 10;
 #ifdef _ASYNCPP_DEBUG
-	assert(g_us_tick / 1000000 - 11644473600 == g_unix_timestamp);
+	assert(g_us_tick / 1000000 - 11644473600 == (uint64_t)g_unix_timestamp);
 #endif
 #else
-	g_us_tick = g_unix_timestamp * 1000 * 1000;
+	g_us_tick = (uint64_t)g_unix_timestamp * 1000 * 1000;
 #ifdef _ASYNCPP_DEBUG
-	assert(g_us_tick / 1000000 == g_unix_timestamp);
+	assert(g_us_tick / 1000000 == (uint64_t)g_unix_timestamp);
 #endif
 #endif
 
@@ -64,7 +64,7 @@ void AsyncFrame::start_thread(BaseThread* t)
 {
 	if(t->get_state() == ThreadState::INIT)
 	{
-		_WARNLOG(logger, "%s", typeid(*t).name());
+		t->on_start();
 		t->attach_thread(new std::thread(thread_main, t));
 	}
 }

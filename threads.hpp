@@ -107,6 +107,11 @@ public:
 	
 	uint32_t check_timer_and_thread_msg();
 
+	virtual void on_start()
+	{
+		_WARNLOG(logger, "%s", typeid(*this).name());
+	}
+
 	/*
 	 重写这个函数以改变线程行为
 	*/
@@ -893,7 +898,12 @@ protected:
 	NetConnect m_conn;
 public:
 	NonblockNetThread() = default;
-	~NonblockNetThread() = default;
+	~NonblockNetThread()
+	{
+#ifndef NDEBUG //to avoid assert() in conn->destruct()
+		m_conn.m_state = NetConnectState::NET_CONN_CLOSED;
+#endif
+	}
 	NonblockNetThread(const NonblockNetThread&) = delete;
 	NonblockNetThread& operator=(const NonblockNetThread&) = delete;
 
@@ -1054,6 +1064,15 @@ public:
 		, m_removed_conns()
 		, m_selector()
 	{
+	}
+	~MultiplexNetThread()
+	{
+#ifndef NDEBUG //to avoid assert() in conn->destruct()
+		for (auto& it : m_conns)
+		{
+			it.second.m_state = NetConnectState::NET_CONN_CLOSED;
+		}
+#endif
 	}
 public:
 	virtual NetConnect* get_conn(uint32_t conn_id) override
