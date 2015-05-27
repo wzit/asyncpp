@@ -107,10 +107,7 @@ public:
 	
 	uint32_t check_timer_and_thread_msg();
 
-	virtual void on_start()
-	{
-		_WARNLOG(logger, "%s", typeid(*this).name());
-	}
+	virtual void on_start(){}
 
 	/*
 	 重写这个函数以改变线程行为

@@ -56,7 +56,9 @@ AsyncFrame::~AsyncFrame()
 
 static void thread_main(BaseThread* t)
 {
+	_WARNLOG(logger, "%s", typeid(*t).name());
 	t->set_state(ThreadState::WORKING);
+	t->on_start();
 	t->run();
 }
 
@@ -64,7 +66,6 @@ void AsyncFrame::start_thread(BaseThread* t)
 {
 	if(t->get_state() == ThreadState::INIT)
 	{
-		t->on_start();
 		t->attach_thread(new std::thread(thread_main, t));
 	}
 }
