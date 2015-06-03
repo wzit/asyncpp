@@ -215,7 +215,7 @@ public:
 	}
 
 	/*
-	 本函数调用后接管buf和ctx，请勿再继续使用
+	 调用后接管buf和ctx，请勿再继续使用
 	*/
 	bool send_thread_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
@@ -277,7 +277,7 @@ public:
 	}
 
 	/*
-	 本函数调用后接管buf，请勿再继续使用
+	 调用后接管buf，请勿再继续使用
 	*/
 	bool send_thread_msg(int32_t msg_type,
 		char* buf, uint32_t buf_len, MsgBufferType buf_type,
@@ -340,7 +340,7 @@ public:
 	}
 
 	/*
-	 本函数调用后接管buf和ctx，请勿再继续使用
+	 调用后接管buf和ctx，请勿再继续使用
 	*/
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, MsgCtx ctx, MsgContextType ctx_type,
@@ -384,7 +384,7 @@ public:
 	}
 
 	/*
-	 本函数调用后接管buf，请勿再继续使用
+	 调用后接管buf，请勿再继续使用
 	*/
 	bool send_resp_msg(int32_t msg_type, char* buf, uint32_t buf_len,
 		MsgBufferType buf_type, const ThreadMsg& req, const BaseThread* sender)

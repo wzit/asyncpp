@@ -215,7 +215,19 @@ void JOWriter::add_value_string(const char* s, uint32_t len)
 				assert(0);
 			}
 			assert(ucs2len != 0);
-			esc_len += jo_escape_utf16_string(buf + esc_len, ucs2, ucs2len);
+			if (ucs2len != 0)
+			{
+				esc_len += jo_escape_utf16_string(buf + esc_len, ucs2, ucs2len);
+			}
+			else
+			{ //乱码
+				memcpy(buf + esc_len, s, len);
+				esc_len += len;
+			}
+#else
+			//乱码
+			memcpy(buf + esc_len, s, len);
+			esc_len += len;
 #endif
 		}
 	}
