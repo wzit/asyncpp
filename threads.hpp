@@ -414,7 +414,7 @@ public:
 		m_recv_len = 0; //m_recv_buf继续使用
 		if (m_fd != INVALID_SOCKET)
 		{
-			_INFOLOG(logger, "close sockfd:%d, state:%d", m_fd, m_state);
+			_INFOLOG(logger, "close sockfd:%d, state:%d", (int)m_fd, (int)m_state);
 			assert(m_state == NetConnectState::NET_CONN_CLOSED);
 #ifdef _ASYNCPP_DEBUG
 			assert(m_ctx == 0x010203041234dbfellu);
@@ -771,7 +771,7 @@ public:
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSING
 			&& conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_DEBUGLOG(logger, "sockfd:%d", conn->m_fd);
+			_DEBUGLOG(logger, "sockfd:%d", (int)conn->m_fd);
 			set_write_event(conn);
 			conn->m_state = NetConnectState::NET_CONN_CLOSING;
 		}
@@ -809,7 +809,7 @@ public:
 		if (conn->m_state == NetConnectState::NET_CONN_CONNECTED
 			|| conn->m_state == NetConnectState::NET_CONN_CONNECTING)
 		{
-			_DEBUGLOG(logger, "conn %d send %uB", (uint32_t)conn->m_fd, msg_len);
+			_DEBUGLOG(logger, "conn %d send %uB", (int)conn->m_fd, msg_len);
 			if (conn->m_send_list.empty())
 			{
 				set_rdwr_event(conn);
@@ -952,7 +952,7 @@ public:
 		{
 			conn->m_timerid = add_timer(m_connect_timeout, NetTimeoutTimer, conn->id());
 		}
-		_DEBUGLOG(logger, "sockfd:%d, state:%d", conn->m_fd, conn->m_state);
+		_DEBUGLOG(logger, "sockfd:%d, state:%d", (int)conn->m_fd, (int)conn->m_state);
 		m_conn = std::move(*conn);
 	}
 	virtual void set_read_event(NetConnect* conn) override{}
@@ -1092,7 +1092,7 @@ public:
 				auto ctx = (AddConnectorCtx*)msg.m_ctx.obj;
 				const auto& r = create_connect_socket(msg.m_buf, ctx->m_port, true, ctx->m_seq);
 
-				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", (int)r.first, (int)r.second);
 
 				ctx->m_ret = r.first;
 				ctx->m_connid = static_cast<uint32_t>(r.second);
@@ -1152,7 +1152,7 @@ public:
 			ctx->m_ret = r.first;
 			ctx->m_connid = static_cast<uint32_t>(r.second);
 
-			_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+			_DEBUGLOG(logger, "create_conn result:%d, fd:%d", (int)r.first, (int)r.second);
 
 			get_asynframe()->send_resp_msg(NET_LISTEN_ADDR_RESP,
 				nullptr, 0, MsgBufferType::STATIC, msg.m_ctx, msg.m_ctx_type, msg, this);
@@ -1166,7 +1166,7 @@ public:
 			{
 				const auto& r = create_connect_socket(ctx->m_ip, ctx->m_port, true, ctx->m_seq);
 
-				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", r.first, r.second);
+				_DEBUGLOG(logger, "create_conn result:%d, fd:%d", (int)r.first, (int)r.second);
 
 				ctx->m_ret = r.first;
 				ctx->m_connid = static_cast<uint32_t>(r.second);
@@ -1270,7 +1270,7 @@ public:
 		int32_t ret = m_selector.add(fd, conn->m_state);
 		if (ret == 0)
 		{
-			_DEBUGLOG(logger, "sockfd:%d, state:%d", fd, conn->m_state);
+			_DEBUGLOG(logger, "sockfd:%d, state:%d", (int)fd, (int)conn->m_state);
 		}
 		else
 		{
@@ -1283,7 +1283,7 @@ public:
 		assert(conn->m_fd != INVALID_SOCKET);
 		if (conn->m_state != NetConnectState::NET_CONN_CLOSED)
 		{
-			_DEBUGLOG(logger, "sockfd:%d, timerid:%d", conn->m_fd, conn->m_timerid);
+			_DEBUGLOG(logger, "sockfd:%d, timerid:%d", (int)conn->m_fd, conn->m_timerid);
 			conn->m_state = NetConnectState::NET_CONN_CLOSED;
 			if (conn->m_timerid >= 0)
 			{
