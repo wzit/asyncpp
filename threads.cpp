@@ -467,7 +467,7 @@ NetBaseThread::create_listen_socket(const char* ip, uint16_t port,
 L_ERR:
 	ret = GET_SOCK_ERR();
 	assert(ret != 0);
-	_WARNLOG(logger, "sockfd:%d error:%d[%s]", fd, ret, strerror(ret));
+	_WARNLOG(logger, "sockfd:%d error:%d[%s]", (int)fd, ret, strerror(ret));
 	::closesocket(fd);
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);

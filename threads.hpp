@@ -545,7 +545,7 @@ public: //private
 		}
 		else
 		{
-			_WARNLOG(logger, "conn %d send list full", (uint32_t)m_fd);
+			_WARNLOG(logger, "conn %d send list full", (int)m_fd);
 			return EAGAIN;
 		}
 	}
@@ -687,7 +687,7 @@ public:
 		socklen_t len = sizeof(sockerr);
 		getsockopt(conn->m_fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&sockerr), &len);
 		
-		_WARNLOG(logger, "sockfd:%d, sockerr:%d, errno:%d[%s], state:%d", conn->m_fd, sockerr, ret, strerror(errno), conn->m_state);
+		_WARNLOG(logger, "sockfd:%d, sockerr:%d, errno:%d[%s], state:%d", (int)conn->m_fd, sockerr, ret, strerror(errno), (int)conn->m_state);
 		if (conn->m_state == NetConnectState::NET_CONN_CLOSING)
 		{
 			remove_conn(conn);
@@ -818,7 +818,7 @@ public:
 		}
 		else
 		{
-			_WARNLOG(logger, "conn %d error state:%d", (uint32_t)conn->m_fd, conn->m_state);
+			_WARNLOG(logger, "conn %d error state:%d", (int)conn->m_fd, (int)conn->m_state);
 			assert(0);
 			return EBUSY;
 		}
@@ -1242,12 +1242,12 @@ public:
 				{
 					del_timer(it->second.m_timerid);
 				}
-				_WARNLOG(logger, "overwrite conn, key:%d, new sockfd:%d", it->first, conn->m_fd);
+				_WARNLOG(logger, "overwrite conn, key:%d, new sockfd:%d", (int)it->first, (int)conn->m_fd);
 				it->second = std::move(*conn);
 			}
 			else
 			{
-				_ERRORLOG(logger, "duplicate sockfd:%d, state:%d, key:%d, new sockfd:%d", it->second.m_fd, it->second.m_state, it->first, conn->m_fd);
+				_ERRORLOG(logger, "duplicate sockfd:%d, state:%d, key:%d, new sockfd:%d", (int)it->second.m_fd, (int)it->second.m_state, (int)it->first, (int)conn->m_fd);
 				///TODO: close new conn or close old conn
 				return;
 			}
@@ -1275,7 +1275,7 @@ public:
 		else
 		{
 			///TODO: close conn
-			_ERRORLOG(logger, "sockfd:%d, state:%d, add selector ret:%d", fd, conn->m_state, ret);
+			_ERRORLOG(logger, "sockfd:%d, state:%d, add selector ret:%d", (int)fd, (int)conn->m_state, ret);
 		}
 	}
 	virtual void remove_conn(NetConnect* conn) override
