@@ -898,6 +898,9 @@ public:
 	~NonblockNetThread()
 	{
 #ifndef NDEBUG //to avoid assert() in conn->destruct()
+#ifdef _ASYNCPP_DEBUG
+		m_conn.m_ctx = 0x010203041234dbfellu;
+#endif
 		m_conn.m_state = NetConnectState::NET_CONN_CLOSED;
 #endif
 	}
@@ -1067,6 +1070,9 @@ public:
 #ifndef NDEBUG //to avoid assert() in conn->destruct()
 		for (auto& it : m_conns)
 		{
+#ifdef _ASYNCPP_DEBUG
+			it.second.m_ctx = 0x010203041234dbfellu;
+#endif
 			it.second.m_state = NetConnectState::NET_CONN_CLOSED;
 		}
 #endif
