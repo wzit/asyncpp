@@ -833,6 +833,7 @@ public:
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
 		NetConnect* conn = get_conn(conn_id);
+		assert (conn != nullptr);
 		if (conn != nullptr)
 		{
 			return send(conn, msg, msg_len, buf_type);
@@ -1316,6 +1317,7 @@ public:
 	virtual void remove_conn(uint32_t conn_id)
 	{
 		NetConnect* conn = get_conn(conn_id);
+		assert(conn != nullptr);
 		if (conn != nullptr)
 		{
 			remove_conn(conn);
