@@ -832,7 +832,16 @@ public:
 	virtual int32_t send(uint32_t conn_id, char* msg, uint32_t msg_len,
 		MsgBufferType buf_type = MsgBufferType::STATIC)
 	{
-		return send(get_conn(conn_id), msg, msg_len, buf_type);
+		NetConnect* conn = get_conn(conn_id);
+		if (conn != nullptr)
+		{
+			return send(conn, msg, msg_len, buf_type);
+		}
+		else
+		{
+			_WARNLOG(logger, "conn %d not found", conn_id);
+			return EINVAL;
+		}
 	}
 public:
 	/*
@@ -1080,7 +1089,10 @@ public:
 public:
 	virtual NetConnect* get_conn(uint32_t conn_id) override
 	{
-		return &m_conns[conn_id];
+		const auto& it = m_conns.find(conn_id);
+		if (it != m_conns.end()) return &it->second;
+		else return nullptr;
+		//return &m_conns[conn_id];
 	}
 	virtual void process_msg(ThreadMsg& msg) override
 	{
@@ -1303,7 +1315,15 @@ public:
 	}
 	virtual void remove_conn(uint32_t conn_id)
 	{
-		remove_conn(&m_conns[conn_id]);
+		NetConnect* conn = get_conn(conn_id);
+		if (conn != nullptr)
+		{
+			remove_conn(conn);
+		}
+		else
+		{
+			_WARNLOG(logger, "conn %d not found", conn_id);
+		}
 	}
 	virtual void set_read_event(NetConnect* conn) override
 	{
