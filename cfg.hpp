@@ -27,6 +27,7 @@ public:
 	int32_t read(const char* cfg_file);
 	section_t& operator[](const char*); //read&write cfg item
 	const std::string& get(const char* section, const char* key) const; //read cfg item
+	const char* getcstr(const char* section, const char* key) const; //read cfg item
 	void set(const char* section, const char* key, const char* val); //write cfg item
 	int32_t getInt32(const char* section, const char* key) const; //read int cfg item
 	void setInt32(const char* section, const char* key, int32_t v); //write int cfg item

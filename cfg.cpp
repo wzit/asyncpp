@@ -36,6 +36,18 @@ const std::string& CFG::get(const char* section, const char* key) const
 	return _cfg_empty_string;
 }
 
+const char* CFG::getcstr(const char* section, const char* key) const
+{
+	auto it = sections.find(section);
+	if (it != sections.end())
+	{
+		auto v = it->second.find(key);
+		if (v != it->second.end())
+			return v->second.c_str();
+	}
+	return _cfg_empty_string.c_str();
+}
+
 void CFG::set(const char* section, const char* key, const char* val)
 {
 	operator[](section)[key] = val;
@@ -140,7 +152,7 @@ int32_t CFG::read(const char* cfg_file)
 		skip_space(pline);
 		int n = static_cast<int>(strlen(pline));
 		if (n == 0) continue;
-		while (isspace(pline[--n]));
+		while (isspace(CHAR_TO_INT(pline[--n])));
 		pline[n + 1] = 0;
 
 		if (pline[0] == ';' || pline[0] == '#') continue;
