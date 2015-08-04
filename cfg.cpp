@@ -89,14 +89,24 @@ int32_t CFG::flush()
 		return errno;
 	}
 
+	//global section
+	for (auto item : sections[""])
+	{
+		fprintf(f, "%s=%s\n", item.first.c_str(), item.second.c_str());
+	}
+
 	for (auto section : sections)
 	{
-		fprintf(f, "[%s]\n", section.first.c_str());
-		for (auto item : section.second)
+		if (!section.first.empty())
 		{
-			fprintf(f, "%s=%s\n", item.first.c_str(), item.second.c_str());
+			fprintf(f, "[%s]\n", section.first.c_str());
+			for (auto item : section.second)
+			{
+				fprintf(f, "%s=%s\n", item.first.c_str(), item.second.c_str());
+			}
 		}
 	}
+
 	fclose(f);
 	return 0;
 }
@@ -130,47 +140,31 @@ int32_t CFG::read(const char* cfg_file)
 		return errno;
 	}
 
-	char* pline = fgets(line, 4096, f);
-	if (pline == nullptr)
+	int c = fgetc(f);
+	if (c == EOF)
 	{
 		fclose(f);
 		return EINVAL;
 	}
 
-	if ((uint8_t)line[0] & 0x80)
+	if (c == 0xEF)
 	{
-		if (!((uint8_t)line[0] == 0xEF && (uint8_t)line[1] == 0xBB && (uint8_t)line[2] == 0xBF))
+		if (fgetc(f) == 0xBB && fgetc(f) == 0xBF)
 		{ // utf-8 bom
+		}
+		else
+		{
 			printf("support utf8 and ascii file\n");
 			fclose(f);
 			return EINVAL;
 		}
-		pline += 3;
 	}
-	do
+	else
 	{
-		skip_space(pline);
-		int n = static_cast<int>(strlen(pline));
-		if (n == 0) continue;
-		while (isspace(CHAR_TO_INT(pline[--n])));
-		pline[n + 1] = 0;
+		ungetc(c, f);
+	}
 
-		if (pline[0] == ';' || pline[0] == '#') continue;
-		if (pline[0] != '[')
-		{
-			printf("expect '[', ignore invalid line:%s", line);
-			continue;
-		}
-		char* pe = strchr(pline + 1, ']');
-		if (pe == nullptr)
-		{
-			printf("expect ']', ignore invalid line:%s", line);
-			continue;
-		}
-		std::string section_name(pline + 1, pe);
-		sections.insert(std::make_pair(section_name, section_t()));
-		ret = read_next_section(sections[section_name], line, f);
-	} while ((pline = fgets(line, 4096, f)) != nullptr);
+	ret = read_next_section(sections[""], line, f);
 
 	fclose(f);
 	return ret;
@@ -189,7 +183,7 @@ int32_t CFG::read_next_section(section_t& section, char* line, FILE* f)
 		skip_space(pline);
 		int n = static_cast<int>(strlen(pline));
 		if (n == 0) continue;
-		while (isspace(pline[--n]));
+		while (isspace(CHAR_TO_INT(pline[--n])));
 		pline[n + 1] = 0;
 
 		if (pline[0] == ';' || pline[0] == '#') continue;
@@ -214,8 +208,8 @@ int32_t CFG::read_next_section(section_t& section, char* line, FILE* f)
 				continue;
 			}
 			char* pe = pv - 1;
-			while (isspace(*pe)) --pe;
-			while (isspace(*++pv));
+			while (isspace(CHAR_TO_INT(*pe))) --pe;
+			while (isspace(CHAR_TO_INT(*++pv)));
 			auto r = section.insert(std::make_pair(std::string(pline, pe + 1), pv));
 			if (!r.second)
 			{
