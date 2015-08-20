@@ -550,11 +550,22 @@ public: //private
 		}
 	}
 	//返回尚未发送的消息数目
-	int32_t clear_send_list()
+	uint32_t clear_send_list()
 	{
+#if 0
 		decltype(m_send_list) q;
 		m_send_list.swap(q);
 		return (int32_t)q.size();
+#else
+		uint32_t bytes = 0;
+		while (!m_send_list.empty())
+		{
+			auto& it = m_send_list.front();
+			bytes += it.data_len - it.bytes_sent;
+			free_buffer(it.data, it.buf_type);
+			m_send_list.pop();
+		}
+#endif
 	}
 };
 
