@@ -549,6 +549,13 @@ public: //private
 			return EAGAIN;
 		}
 	}
+	//返回尚未发送的消息数目
+	int32_t clear_send_list()
+	{
+		decltype(m_send_list) q;
+		m_send_list.swap(q);
+		return (int32_t)q.size();
+	}
 };
 
 struct net_conn_hash
