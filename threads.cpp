@@ -279,6 +279,10 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 				on_error_event(conn);
 				_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
+			if (bytes_sent > 0)
+			{
+				change_timer(conn->m_timerid, m_idle_timeout);
+			}
 			return bytes_sent;
 		}
 	}
