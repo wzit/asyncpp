@@ -565,6 +565,7 @@ public: //private
 			free_buffer(it.data, it.buf_type);
 			m_send_list.pop();
 		}
+		return bytes;
 #endif
 	}
 };
