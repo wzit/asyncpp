@@ -333,6 +333,13 @@ L_READ:
 				{
 					remain_len = conn->m_recv_len - package_len;
 					process_net_msg(conn);
+					
+					if (conn->m_state == NetConnectState::NET_CONN_CLOSING
+						|| conn->m_state == NetConnectState::NET_CONN_CLOSED)
+					{
+						break;
+					}
+
 #ifdef _ASYNCPP_DEBUG
 					//memory barrier
 					assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
