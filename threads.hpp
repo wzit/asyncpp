@@ -141,6 +141,15 @@ public:
 		return m_msg_queue.size();
 	}
 
+	/*遍历消息队列,返回删除的消息个数
+	int32_t callback(ThreadMsg& v, void*);
+	return 0 -> ignore
+	       1 -> remove the element
+	*/
+	int32_t traverse_msg(int32_t(*callback)(ThreadMsg& msg, void* arg), void* arg)
+	{
+		return m_msg_queue.traverse(callback, arg);
+	}
 public:
 	/*
 	 重写这个函数以处理定时器消息
@@ -1427,6 +1436,16 @@ public:
 	uint32_t get_queued_msg_number(thread_id_t thread_id) const
 	{
 		return m_threads[thread_id]->get_queued_msg_number();
+	}
+
+	/*遍历消息队列,返回删除的消息个数
+	int32_t callback(ThreadMsg& v, void*);
+	return 0 -> ignore
+	       1 -> remove the element
+	*/
+	int32_t traverse_msg(int32_t(*callback)(ThreadMsg& msg, void* arg), void* arg)
+	{
+		return m_msg_queue.traverse(callback, arg);
 	}
 
 	BaseThread* operator[](thread_id_t thread_id) const

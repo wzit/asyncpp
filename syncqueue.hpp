@@ -94,6 +94,55 @@ public:
 		//if (front_pos != after_back_pos)
 		return queue_data[front_pos];
 	}
+
+	/*遍历全部元素,返回删除的元素个数
+	int32_t callback(T& v, void*);
+	return 0 -> ignore
+	       1 -> remove the element
+	*/
+	int32_t traverse(int32_t(*callback)(T&, void*), void* arg)
+	{
+		SyncQueueScopeLock lock(mtx);
+		int32_t ret;
+		uint32_t pos;
+		uint32_t cnt = 0;
+		uint32_t new_back_pos = front_pos;
+
+		for (new_back_pos = front_pos;
+			new_back_pos != after_back_pos;
+			new_back_pos = new_back_pos != 0 ? new_back_pos - 1 : N - 1)
+		{
+			ret = callback(queue_data[new_back_pos], arg);
+			if (ret != 0)
+			{
+				++cnt;
+				if (new_back_pos != after_back_pos) goto L_RM_ELEMENT;
+				else goto L_END;
+			}
+		}
+		return 0;
+
+	L_RM_ELEMENT:
+		for (pos = new_back_pos != 0 ? new_back_pos - 1 : N - 1;
+			pos != after_back_pos;
+			pos = pos != 0 ? pos - 1 : N - 1)
+		{
+			ret = callback(queue_data[pos], arg);
+			if (ret != 0)
+			{
+				++cnt;
+			}
+			else
+			{
+				queue_data[new_back_pos] = std::move(queue_data[pos]);
+				new_back_pos = new_back_pos != 0 ? new_back_pos - 1 : N - 1;
+			}
+		}
+
+	L_END:
+		after_back_pos = new_back_pos;
+		return cnt;
+	}
 };
 
 } //end of namespace asyncpp
