@@ -695,8 +695,14 @@ public:
 	void set_speedlimit(uint32_t sendlimit = SPEEDUNLIMITED,
 		uint32_t recvlimit = SPEEDUNLIMITED)
 	{
-		m_sendspeedlimit = sendlimit;
-		m_recvspeedlimit = recvlimit;
+		if (m_sendspeedlimit != sendlimit || m_recvspeedlimit != recvlimit)
+		{
+			_INFOLOG(logger, "sendspeedlimit from %u to %u, recvspeedlimit from %u to %u",
+				m_sendspeedlimit, sendlimit, m_recvspeedlimit, recvlimit);
+
+			m_sendspeedlimit = sendlimit;
+			m_recvspeedlimit = recvlimit;
+		}
 	}
 	//connect在t秒产生错误ETIMEDOUT
 	void set_connect_timeout(uint32_t t){m_connect_timeout=t;}
