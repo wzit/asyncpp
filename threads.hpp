@@ -673,11 +673,11 @@ class NetBaseThread : public BaseThread
 {
 public:
 	SpeedSample<16> m_ss;
-	uint32_t m_dns_timeout; //s
-	uint32_t m_connect_timeout; //s
-	uint32_t m_idle_timeout; //s
-	uint32_t m_sendspeedlimit; //B/s
-	uint32_t m_recvspeedlimit; //B/s
+	volatile uint32_t m_dns_timeout; //s
+	volatile uint32_t m_connect_timeout; //s
+	volatile uint32_t m_idle_timeout; //s
+	volatile uint32_t m_sendspeedlimit; //B/s
+	volatile uint32_t m_recvspeedlimit; //B/s
 public:
 	NetBaseThread()
 		: m_ss()
