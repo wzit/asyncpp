@@ -279,7 +279,11 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 
 			///TODO: return if n==0
 
-			if (bytes_sent + s.second >= m_sendspeedlimit) return bytes_sent;
+			if (bytes_sent + s.second >= m_sendspeedlimit)
+			{
+				change_timer(conn->m_timerid, m_idle_timeout);
+				return bytes_sent;
+			}
 		}
 		else
 		{
@@ -300,6 +304,10 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 
 	if (conn->m_send_list.empty()) set_read_event(conn);
 
+	if (bytes_sent > 0)
+	{
+		change_timer(conn->m_timerid, m_idle_timeout);
+	}
 	return bytes_sent;
 }
 
