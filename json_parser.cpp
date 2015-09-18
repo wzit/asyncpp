@@ -3,8 +3,9 @@
 */
 
 #include "json_parser.hpp"
-#include "logger.hpp"
 #include <assert.h>
+
+static JO _g_jo_empty;
 
 JO::JO()
 	: m_jo_data({nullptr})
@@ -555,8 +556,7 @@ char* JO::str2() const
 	else return jo_str2_empty_string;
 }
 
-bool 
-JO::b() const
+bool JO::b() const
 {
 	if (m_type == jo_type_t::boolean) {
 		return *m_jo_value == 't' ? true : false;
@@ -568,7 +568,9 @@ JO::b() const
 const JO& JO::operator[](const char* key) const
 {
 	assert(m_type == jo_type_t::object);
-	return m_object_members->find(key)->second;
+	const auto& it = m_object_members->find(key);
+	if (it != m_object_members->end()) return it->second;
+	else return _g_jo_empty;
 }
 
 jo_map_t::const_iterator jo_find(const JO& jo, const char* key)
