@@ -178,7 +178,7 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	auto t = reinterpret_cast<MultiplexNetThread<SelSelector>*>(p_thread);
 	SOCKET_HANDLE max_fd = 0;
 	std::unordered_map<SOCKET_HANDLE, uint32_t>::const_iterator record_point;
-	int32_t rp = rand() % (int32_t)m_fds.size();
+	int32_t rp;
 	fd_set read_fds;
 	fd_set write_fds;
 	fd_set except_fds;
@@ -191,9 +191,11 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 		for (auto fd : m_removed_fds) m_fds.erase(fd);
 		m_removed_fds.clear();
 	}
+	if (m_fds.empty()) return 0;
 
+	rp = rand() % (int32_t)m_fds.size();
 	record_point = m_fds.begin();
-	for (auto it = m_fds.begin(); it != m_fds.end(); ++it)
+	for (auto it = record_point; it != m_fds.end(); ++it)
 	{
 		if (mode&SELIN && it->second&SELIN)
 		{
