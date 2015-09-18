@@ -3,6 +3,7 @@
 */
 
 #include "json_parser.hpp"
+#include "logger.hpp"
 #include <assert.h>
 
 JO::JO()
