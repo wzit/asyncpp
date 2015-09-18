@@ -226,7 +226,11 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 		++n;
 		FD_SET(it->first, &except_fds);
 	}
-	if (n == 0) goto L_RET;
+	if (n == 0)
+	{
+		t->m_ss.sample(0, 0);
+		goto L_RET;
+	}
 
 	n = select(static_cast<int>(max_fd + 1), &read_fds, &write_fds, &except_fds, &tv);
 	if (n > 0)
@@ -293,6 +297,10 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	{
 		_WARNLOG(logger, "select fail:%d[%s], maxfd:%u", GET_SOCK_ERR(), strerror(errno), max_fd);
 		n = 0;
+	}
+	else
+	{
+		t->m_ss.sample(0, 0);
 	}
 
 L_RET:
