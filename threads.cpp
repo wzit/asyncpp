@@ -255,8 +255,8 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 	const auto& s = m_ss.get_cur_speed();
 	if (s.second >= m_sendspeedlimit) return 0;
 
-	//while (!conn->m_send_list.empty())
-	//{
+	while (!conn->m_send_list.empty())
+	{
 		SendMsgType& msg = conn->m_send_list.front();
 		int32_t try_send = msg.data_len - msg.bytes_sent;
 		if (try_send + s.second > m_sendspeedlimit)
@@ -276,8 +276,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 
 			///TODO: return if n==0
 
-			//每次只尝试发送一条消息，不再需要此处判断
-			//if (bytes_sent + s.second >= m_sendspeedlimit) return bytes_sent;
+			if (bytes_sent + s.second >= m_sendspeedlimit) return bytes_sent;
 		}
 		else
 		{
@@ -294,7 +293,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			}
 			return bytes_sent;
 		}
-	//}
+	}
 
 	if (conn->m_send_list.empty()) set_read_event(conn);
 
@@ -307,7 +306,7 @@ uint32_t NetBaseThread::do_recv(NetConnect* conn)
 	const auto& s = m_ss.get_cur_speed();
 	if (s.first >= m_recvspeedlimit) return 0;
 
-//L_READ:
+L_READ:
 	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
 	if (len == 0)
 	{
@@ -379,11 +378,10 @@ uint32_t NetBaseThread::do_recv(NetConnect* conn)
 			conn->enlarge_recv_buffer(package_len);
 		}
 
-		//每次只接收一次数据
-		//if (recv_len == len)
-		//{
-		//	goto L_READ;
-		//}
+		if (bytes_recv + s.first < m_recvspeedlimit && recv_len == len)
+		{
+			goto L_READ;
+		}
 	}
 	else if (recv_len == 0)
 	{ //peer close conn ///TODO: 半关闭
