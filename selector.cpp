@@ -41,7 +41,7 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
-			else butes_sent = 0;
+			else bytes_sent = 0;
 
 			if(evs[i].events & EPOLLERR)
 			{
@@ -69,7 +69,7 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
-			else butes_sent = 0;
+			else bytes_sent = 0;
 
 			if(evs[i].events & EPOLLERR)
 			{
@@ -84,7 +84,12 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	}
 	else if(ret < 0)
 	{
+		t->m_ss.sample(0, 0);
 		_WARNLOG(logger, "epoll_wait fail:%d[%s]", errno, strerror(errno));
+	}
+	else
+	{
+		t->m_ss.sample(0, 0);
 	}
 		
 	//t->m_ss.sample(bytes_recv_total, bytes_sent_total);
@@ -295,8 +300,8 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	}
 	else if (n < 0)
 	{
+		t->m_ss.sample(0, 0);
 		_WARNLOG(logger, "select fail:%d[%s], maxfd:%u", GET_SOCK_ERR(), strerror(errno), max_fd);
-		n = 0;
 	}
 	else
 	{
