@@ -1254,6 +1254,10 @@ public:
 		{
 			n = m_selector.poll(reinterpret_cast<void*>(this), mode, 0);
 		}
+		else
+		{
+			m_ss.sample(0, 0);
+		}
 
 		if (!m_removed_conns.empty())
 		{ // close conn

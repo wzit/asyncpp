@@ -314,6 +314,8 @@ public:
 
 		m_total_r_bytes += r_bytes;
 		m_total_w_bytes += w_bytes;
+		
+		_TRACELOG(logger, "lasttime:%u,curtime:%u,rbytes:%d,wbytes:%d", (int)m_last_second, (int)g_unix_timestamp, r_bytes, w_bytes);
 	}
 	//@return <recv_speed, send_speed>
 	std::pair<uint32_t, uint32_t> get_avg_speed(uint32_t seconds = 5)
