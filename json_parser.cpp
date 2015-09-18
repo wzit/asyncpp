@@ -3,6 +3,7 @@
 */
 
 #include "json_parser.hpp"
+#include "logger.hpp"
 #include <assert.h>
 
 JO::JO()
@@ -552,6 +553,16 @@ char* JO::str2() const
 	}
 	//else return "";
 	else return jo_str2_empty_string;
+}
+
+bool 
+JO::b() const
+{
+	if (m_type == jo_type_t::boolean) {
+		return *m_jo_value == 't' ? true : false;
+	} else {
+		return false;
+	}
 }
 
 const JO& JO::operator[](const char* key) const
