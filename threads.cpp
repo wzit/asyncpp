@@ -261,7 +261,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 		if (try_send + s.second > m_sendspeedlimit)
 		{
 			if (m_sendspeedlimit > s.second) try_send = m_sendspeedlimit - s.second;
-			else try_send = (rand() & 0xff) + 128;
+			else try_send = rand() % try_send + 1;
 		}
 		int32_t n = ::send(conn->m_fd, msg.data + msg.bytes_sent, try_send, MSG_NOSIGNAL);
 		if (n >= 0)
@@ -318,7 +318,7 @@ L_READ:
 	if (len + s.first > m_recvspeedlimit)
 	{
 		if (m_recvspeedlimit > s.first) len = m_recvspeedlimit - s.first;
-		else len = (rand() & 0xff) + 128;
+		else len = rand() % len + 1;
 	}
 	int32_t recv_len = recv(conn->m_fd,
 		conn->m_recv_buf + conn->m_recv_len,
