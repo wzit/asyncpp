@@ -252,11 +252,16 @@ uint32_t NetBaseThread::do_connect(NetConnect* conn)
 uint32_t NetBaseThread::do_send(NetConnect* conn)
 {
 	uint32_t bytes_sent = 0;
-	while (!conn->m_send_list.empty())
-	{
+	const auto& s = m_ss.get_cur_speed();
+	if (s.second >= m_sendspeedlimit) return 0;
+
+	//while (!conn->m_send_list.empty())
+	//{
 		SendMsgType& msg = conn->m_send_list.front();
-		int32_t n = ::send(conn->m_fd, msg.data + msg.bytes_sent,
-			msg.data_len - msg.bytes_sent, MSG_NOSIGNAL);
+		int32_t try_send = msg.data_len - msg.bytes_sent;
+		if (try_send + s.second > m_sendspeedlimit)
+			try_send = m_sendspeedlimit - s.second;
+		int32_t n = ::send(conn->m_fd, msg.data + msg.bytes_sent, try_send, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
 			bytes_sent += n;
@@ -268,7 +273,11 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 				free_buffer(msg.data, msg.buf_type);
 				conn->m_send_list.pop();
 			}
+
 			///TODO: return if n==0
+
+			//每次只尝试发送一条消息，不再需要此处判断
+			//if (bytes_sent + s.second >= m_sendspeedlimit) return bytes_sent;
 		}
 		else
 		{
@@ -285,15 +294,20 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 			}
 			return bytes_sent;
 		}
-	}
-	set_read_event(conn);
+	//}
+
+	if (conn->m_send_list.empty()) set_read_event(conn);
+
 	return bytes_sent;
 }
 
 uint32_t NetBaseThread::do_recv(NetConnect* conn)
 {
 	uint32_t bytes_recv = 0;
-L_READ:
+	const auto& s = m_ss.get_cur_speed();
+	if (s.first >= m_recvspeedlimit) return 0;
+
+//L_READ:
 	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
 	if (len == 0)
 	{
@@ -301,6 +315,8 @@ L_READ:
 		len = conn->m_recv_buf_len - conn->m_recv_len;
 	}
 
+	if (len + s.first > m_recvspeedlimit)
+		len = m_recvspeedlimit - s.first;
 	int32_t recv_len = recv(conn->m_fd,
 		conn->m_recv_buf + conn->m_recv_len,
 		len, 0);
@@ -363,10 +379,11 @@ L_READ:
 			conn->enlarge_recv_buffer(package_len);
 		}
 
-		if (recv_len == len)
-		{
-			goto L_READ;
-		}
+		//每次只接收一次数据
+		//if (recv_len == len)
+		//{
+		//	goto L_READ;
+		//}
 	}
 	else if (recv_len == 0)
 	{ //peer close conn ///TODO: 半关闭
