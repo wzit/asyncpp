@@ -253,14 +253,16 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 {
 	uint32_t bytes_sent = 0;
 	const auto& s = m_ss.get_cur_speed();
-	if (s.second >= m_sendspeedlimit) return 0;
 
 	while (!conn->m_send_list.empty())
 	{
 		SendMsgType& msg = conn->m_send_list.front();
 		int32_t try_send = msg.data_len - msg.bytes_sent;
 		if (try_send + s.second > m_sendspeedlimit)
-			try_send = m_sendspeedlimit - s.second;
+		{
+			if (m_sendspeedlimit > s.second) try_send = m_sendspeedlimit - s.second;
+			else try_send = (rand() & 0xff) + 16;
+		}
 		int32_t n = ::send(conn->m_fd, msg.data + msg.bytes_sent, try_send, MSG_NOSIGNAL);
 		if (n >= 0)
 		{
@@ -304,7 +306,6 @@ uint32_t NetBaseThread::do_recv(NetConnect* conn)
 {
 	uint32_t bytes_recv = 0;
 	const auto& s = m_ss.get_cur_speed();
-	if (s.first >= m_recvspeedlimit) return 0;
 
 L_READ:
 	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
@@ -315,7 +316,10 @@ L_READ:
 	}
 
 	if (len + s.first > m_recvspeedlimit)
-		len = m_recvspeedlimit - s.first;
+	{
+		if (m_recvspeedlimit > s.first) len = m_recvspeedlimit - s.first;
+		else len = (rand() & 0xff) + 16;
+	}
 	int32_t recv_len = recv(conn->m_fd,
 		conn->m_recv_buf + conn->m_recv_len,
 		len, 0);
