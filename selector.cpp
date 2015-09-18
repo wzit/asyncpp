@@ -29,20 +29,26 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 		for(int32_t i = rp; i<ret; ++i)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(evs[i].data.fd));
+
 			if(mode&SELIN && evs[i].events&EPOLLIN)
 			{
 				bytes_recv = t->on_read_event(conn);
 				///TODO: 出错中断，防止重复on_error_event
 			}
+			else bytes_recv = 0;
+
 			if(mode&SELOUT && evs[i].events&EPOLLOUT)
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
+			else butes_sent = 0;
+
 			if(evs[i].events & EPOLLERR)
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
 			}
+
 			t->m_ss.sample(bytes_recv, bytes_sent);
 			bytes_sent_total += bytes_sent;
 			bytes_recv_total += bytes_recv;
@@ -51,20 +57,26 @@ int32_t EpollSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 		for(int32_t i = 0; i<rp; ++i)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(evs[i].data.fd));
+
 			if(mode&SELIN && evs[i].events&EPOLLIN)
 			{
 				bytes_recv = t->on_read_event(conn);
 				///TODO: 出错中断，防止重复on_error_event
 			}
+			else bytes_recv = 0;
+
 			if(mode&SELOUT && evs[i].events&EPOLLOUT)
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
+			else butes_sent = 0;
+
 			if(evs[i].events & EPOLLERR)
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
 			}
+
 			t->m_ss.sample(bytes_recv, bytes_sent);
 			bytes_sent_total += bytes_sent;
 			bytes_recv_total += bytes_recv;
@@ -219,25 +231,31 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 	n = select(static_cast<int>(max_fd + 1), &read_fds, &write_fds, &except_fds, &tv);
 	if (n > 0)
 	{
-		uint32_t bytes_sent = 0;
-		uint32_t bytes_recv = 0;
+		uint32_t bytes_sent;
+		uint32_t bytes_recv;
 		for (auto it = record_point; it != m_fds.end(); ++it)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(it->first));
+
 			if (FD_ISSET(it->first, &read_fds))
 			{
 				bytes_recv = t->on_read_event(conn);
 				///TODO: 出错中断，防止重复on_error_event
 			}
+			else bytes_recv = 0;
+
 			if (FD_ISSET(it->first, &write_fds))
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
+			else bytes_sent = 0;
+
 			if (FD_ISSET(it->first, &except_fds))
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
 			}
+
 			t->m_ss.sample(bytes_recv, bytes_sent);
 			bytes_sent_total += bytes_sent;
 			bytes_recv_total += bytes_recv;
@@ -246,20 +264,26 @@ int32_t SelSelector::poll(void* p_thread, uint32_t mode, uint32_t ms)
 		for (auto it = m_fds.begin(); it != record_point; ++it)
 		{
 			NetConnect* conn = t->get_conn(static_cast<uint32_t>(it->first));
+
 			if (FD_ISSET(it->first, &read_fds))
 			{
 				bytes_recv = t->on_read_event(conn);
 				///TODO: 出错中断，防止重复on_error_event
 			}
+			else bytes_recv = 0;
+
 			if (FD_ISSET(it->first, &write_fds))
 			{
 				bytes_sent = t->on_write_event(conn);
 			}
+			else bytes_sent = 0;
+
 			if (FD_ISSET(it->first, &except_fds))
 			{
 				++bytes_recv;
 				t->on_error_event(conn);
 			}
+
 			t->m_ss.sample(bytes_recv, bytes_sent);
 			bytes_sent_total += bytes_sent;
 			bytes_recv_total += bytes_recv;
