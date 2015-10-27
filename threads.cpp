@@ -280,11 +280,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 
 			///TODO: return if n==0
 
-			if (bytes_sent + s.second >= m_sendspeedlimit)
-			{
-				change_timer(conn->m_timerid, m_idle_timeout);
-				return bytes_sent;
-			}
+			if (bytes_sent + s.second >= m_sendspeedlimit) break;
 		}
 		else
 		{
@@ -295,11 +291,7 @@ uint32_t NetBaseThread::do_send(NetConnect* conn)
 				on_error_event(conn);
 				_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
 			}
-			if (bytes_sent > 0)
-			{
-				change_timer(conn->m_timerid, m_idle_timeout);
-			}
-			return bytes_sent;
+			break;
 		}
 	}
 
@@ -567,6 +559,142 @@ NetBaseThread::create_connect_socket(const char* ip,
 	_WARNLOG(logger, "sockfd:%d error:%d[%s]", fd, ret, strerror(ret));
 	fd = INVALID_SOCKET;
 	return std::make_pair(ret, fd);
+}
+
+int32_t NetBaseThread::send_immediate(NetConnect* conn, char* msg, int32_t msg_len, int32_t wait_ms)
+{
+	int ret = 0;
+	int bytes_sent = 0;
+	for (;;)
+	{
+		ret = ::send(conn->m_fd, msg + bytes_sent, msg_len - bytes_sent, 0);
+		if (ret >= 0)
+		{
+			bytes_sent += ret;
+			_DEBUGLOG(logger, "sockfd:%d send %uB, bytes_sent:%uB, total:%uB", conn->m_fd, ret, bytes_sent, msg_len);
+			if (bytes_sent == msg_len) break;
+		}
+		else
+		{
+			int32_t errcode = GET_SOCK_ERR();
+			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
+			{
+				///TODO: drop msg if fail several times
+				on_error_event(conn);
+				_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+				break;
+			}
+			if (wait_ms <= 0) break;
+			usleep(1);
+			--wait_ms;
+		}
+	}
+
+	if (bytes_sent > 0)
+	{
+		change_timer(conn->m_timerid, m_idle_timeout);
+	}
+	return bytes_sent;
+}
+
+//int32_t NetBaseThread::flush(NetConnect* conn, int32_t wait_ms)
+//{
+//	return 0;
+//}
+//
+//int32_t NetBaseThread::recv_immediate(NetConnect* conn, char* buf, int32_t expected_len, int32_t wait_ms)
+//{
+//	return 0;
+//}
+
+int32_t NetBaseThread::wait_msg(NetConnect* conn, int32_t wait_ms)
+{
+	uint32_t bytes_recv = 0;
+	int32_t len = conn->m_recv_buf_len - conn->m_recv_len;
+
+	for (;;)
+	{
+		int32_t recv_len = recv(conn->m_fd, conn->m_recv_buf + conn->m_recv_len, len, 0);
+
+		if (recv_len > 0)
+		{ //recv data
+			bytes_recv += recv_len;
+			conn->m_recv_len += recv_len;
+			_DEBUGLOG(logger, "sockfd:%d recv %uB, total:%uB",
+				conn->m_fd, recv_len, conn->m_recv_len);
+			change_timer(conn->m_timerid, m_idle_timeout);
+			int32_t package_len = frame(conn);
+			if (package_len <= conn->m_recv_len)
+			{ //recv one or more package
+				int32_t remain_len;
+				do
+				{
+					if (package_len > 0)
+					{
+						remain_len = conn->m_recv_len - package_len;
+						process_net_msg(conn);
+
+						if (conn->m_state == NetConnectState::NET_CONN_CLOSING
+							|| conn->m_state == NetConnectState::NET_CONN_CLOSED)
+						{
+							break;
+						}
+
+#ifdef _ASYNCPP_DEBUG
+						//memory barrier
+						assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
+						memmove(conn->m_recv_buf,
+							conn->m_recv_buf + package_len, remain_len);
+						conn->m_recv_len = remain_len;
+						conn->m_header_len = 0;
+						conn->m_body_len = 0;
+						package_len = frame(conn);
+					}
+					else
+					{ // error occur
+						close(conn);
+						return recv_len;
+					}
+				} while (package_len <= remain_len);
+
+				break;
+			}
+			else
+			{ // recv partial package
+				conn->enlarge_recv_buffer(package_len);
+			}
+		}
+		else if (recv_len == 0)
+		{ //peer close conn ///TODO: 半关闭
+			_DEBUGLOG(logger, "sockfd:%d close", conn->m_fd);
+			if (conn->m_recv_len > 0)
+			{
+				process_net_msg(conn);
+#ifdef _ASYNCPP_DEBUG
+				//memory barrier
+				assert(memcmp(conn->m_recv_buf + conn->m_recv_buf_len + 16, "ASYNCPPMEMORYBAR", 16) == 0);
+#endif
+			}
+			remove_conn(conn);
+			break;
+		}
+		else
+		{ //error
+			int32_t errcode = GET_SOCK_ERR();
+			if (errcode != WSAEWOULDBLOCK && errcode != EAGAIN && errcode != WSAEINTR)
+			{
+				_WARNLOG(logger, "sockfd:%d error:%d[%s]", conn->m_fd, errcode, strerror(errno));
+				on_error_event(conn);
+				break;
+			}
+			if (wait_ms <= 0) break;
+			usleep(1);
+			--wait_ms;
+		}
+	}
+
+	return bytes_recv;
 }
 
 uint32_t NetBaseThread::on_read_event(NetConnect* conn)

@@ -878,6 +878,34 @@ public:
 			return EINVAL;
 		}
 	}
+	
+	/*
+	 立刻向特定连接发送数据
+	 这些数据不会被排队，不受限速影响，立刻发送直至发送完毕或wait_ms毫秒
+	 @return 成功发送的字节数
+	*/
+	virtual int32_t send_immediate(NetConnect* conn, char* msg, int32_t msg_len, int32_t wait_ms);
+	
+	/*
+	 立刻发送特定连接上排队的数据
+	 这些数据不受限速影响，立刻发送直至发送完毕或wait_ms毫秒
+	 @return 成功发送的字节数
+	*/
+	//virtual int32_t flush(NetConnect* conn, int32_t wait_ms);
+	
+	/*
+	 立刻从特定连接上接收数据
+	 这些数据不受限速影响，立刻接收直至接收完毕或wait_ms毫秒
+	 @return 成功接收的字节数
+	*/
+	//virtual int32_t recv_immediate(NetConnect* conn, char* buf, int32_t expected_len, int32_t wait_ms);
+	
+	/*
+	 立刻从特定连接上接收消息
+	 这些数据不受限速影响，立刻接收直至收到一个完整消息并回调process_net_msg()或wait_ms毫秒
+	 @return 成功接收的字节数
+	*/
+	virtual int32_t wait_msg(NetConnect* conn, int32_t wait_ms);
 public:
 	/*
 	 重写这个函数以处理线程消息
