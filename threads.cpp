@@ -882,7 +882,11 @@ int32_t NetBaseThread::frame(NetConnect* conn)
 			}
 			else return conn->m_recv_len; //unsupported
 		}
-		else return conn->m_recv_len; ///TODO:recv until conn close
+		else
+		{
+			///TODO:recv until conn close
+			return conn->m_recv_len * 2;
+		}
 	}
 	else
 	{
