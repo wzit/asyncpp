@@ -396,6 +396,19 @@ L_READ:
 		_DEBUGLOG(logger, "sockfd:%d close", conn->m_fd);
 		if (conn->m_recv_len > 0)
 		{
+			int32_t package_len = frame(conn);
+			if (package_len > conn->m_recv_len)
+			{
+				if (conn->m_net_msg_type == NetMsgType::HTTP_RESP
+					&& conn->m_header_len != 0 && conn->m_body_len == 0)
+				{
+					conn->m_body_len = conn->m_recv_len - conn->m_header_len;
+				}
+				else
+				{
+					_WARNLOG(logger, "recv incomplete package, headerlen:%u, bodylen:%u, recvlen:%u", conn->m_header_len, conn->m_body_len, conn->m_recv_len);
+				}
+			}
 			process_net_msg(conn);
 #ifdef _ASYNCPP_DEBUG
 			//memory barrier
