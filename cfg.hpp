@@ -10,7 +10,8 @@ class CFG
 {
 private:
 	typedef std::unordered_map<std::string, std::string> section_t;
-	std::unordered_map<std::string, section_t> sections;
+	typedef std::unordered_map<std::string, section_t> sections_t;
+	sections_t sections;
 #ifdef _WIN32
 	std::wstring cfg_path;
 #else
@@ -35,6 +36,9 @@ public:
 	void setInt64(const char* section, const char* key, int64_t v); //write int cfg item
 	int32_t flush();
 	int32_t flush(const char* cfg_file);
+
+	sections_t::iterator begin(){return sections.begin();}
+	sections_t::iterator end(){return sections.end();}
 
 private:
 	int32_t read_next_section(section_t& section, char* line, FILE* f);
