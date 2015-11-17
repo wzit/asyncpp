@@ -59,6 +59,11 @@ public:
 	{
 		m_plock->lock();
 	}
+	ScopeSpinLock(SpinLock* plock)
+		: m_plock(plock)
+	{
+		m_plock->lock();
+	}
 	~ScopeSpinLock()
 	{
 		m_plock->unlock();
