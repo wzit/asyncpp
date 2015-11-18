@@ -18,6 +18,10 @@ class SpinLock
 public:
 	SpinLock() : m_lock()
 	{
+#ifdef _WIN32
+		//vc bug
+		m_lock._My_flag = 0;
+#endif
 	}
 	~SpinLock()
 	{
